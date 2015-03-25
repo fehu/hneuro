@@ -2,19 +2,24 @@ module Neuro
 ( NetworkElem(..)
 , newNeuron, newInput, newOutput, newDelaySink, newDelayedInput
 ,  isNeuron,  isInput,  isOutput,  isDelaySink,  isDelayedInput
+, Layer
+, newLayer
+, isolatedLayer
 , NetworkLayer(..)
---, newLayer
+, newNetworkLayer
 , test
 ) where
 
 import NamedFunc
-import Data.Map (Map, keys, elems)
+import Data.Map (Map, keys, elems, fromList)
+import Data.Set (Set)
 
 data NetworkElem a = Neuron {weights :: [a], transfer :: NamedFunc ([a] -> a)}
                    | Input a
                    | Output a
                    | DelaySink a Int (NetworkElem a)
                    | DelayedInput Int
+                   deriving Eq
 
 newNeuron w s f         = Neuron w $ f `named` s
 newInput next_value     = Input next_value
@@ -47,8 +52,23 @@ instance Show a => Show (NetworkElem a) where
     show (DelaySink x delay link)   = show x ++ " -- delay " ++ show delay ++ " -->" ++ show link
     show (DelayedInput x)           = "delayed" ++ show x
 
+instance Eq a => Ord (NetworkElem a) where
+    (Neuron w1 f1) `compare` (Neuron w2 f2) = LT
+--    TODO
+
+
 -- --
-type Layer a = Map (NetworkElem a) [NetworkLayer a]
+type LayerElemKey a = (Int, NetworkElem a)
+
+--instance Eq (Int, NetworkElem a) where (i1, _) == (i2, _) = i1 == i2
+
+type Layer a = Map (LayerElemKey a) [NetworkLayer a]
+
+newLayer :: Eq a => [(NetworkElem a, [NetworkLayer a])] -> Layer a
+newLayer dict = fromList $ map (\((k,v),i) -> ((i,k), v)) $ zip dict [1..]
+
+isolatedLayer :: Eq a => [NetworkElem a] -> Layer a
+isolatedLayer l = newLayer $ zip l $ repeat []
 
 data NetworkLayer a = InLayer     (Layer a)
                     | HiddenLayer (Layer a)
@@ -56,17 +76,17 @@ data NetworkLayer a = InLayer     (Layer a)
 
 
 compatible :: Layer a -> (NetworkElem a -> Bool) -> Bool
-layer `compatible` f = all tstf (keys layer)
+layer `compatible` f = all tstf (map snd $ keys layer)
                      where tstf = \k -> foldr (\f a -> f(k) || a) False tst
                            tst  = [f, isDelayedInput, isDelaySink]
 --noNext :: Layer a -> Bool
 noNext layer = all null $ elems layer
 
-newLayer :: Layer a -> NetworkLayer a
-newLayer layer | layer `compatible` isInput     = InLayer layer
-               | layer `compatible` isNeuron    = HiddenLayer layer
-               | layer `compatible` isOutput
-                            && noNext layer     = OutLayer layer
+newNetworkLayer :: Layer a -> NetworkLayer a
+newNetworkLayer layer | layer `compatible` isInput     = InLayer layer
+                      | layer `compatible` isNeuron    = HiddenLayer layer
+                      | layer `compatible` isOutput
+                                   && noNext layer     = OutLayer layer
 
 --newLayer out [] = if all outCompatible out
 --                  then OutLayer out
