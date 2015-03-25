@@ -3,8 +3,8 @@ module Neuro
 , newNeuron, newInput, newOutput, newDelaySink, newDelayedInput
 ,  isNeuron,  isInput,  isOutput,  isDelaySink,  isDelayedInput
 , Layer
-, newLayer
-, isolatedLayer
+, isInLayer, isHiddenLayer, isOutLayer
+, newLayer, isolatedLayer
 , NetworkLayer(..)
 , newNetworkLayer
 , test
@@ -74,6 +74,14 @@ data NetworkLayer a = InLayer     (Layer a)
                     | HiddenLayer (Layer a)
                     | OutLayer    (Layer a)
 
+isInLayer (InLayer _)           = True
+isInLayer _                     = False
+
+isHiddenLayer (HiddenLayer _)   = True
+isHiddenLayer _                 = False
+
+isOutLayer (OutLayer _)         = True
+isOutLayer _                    = False
 
 compatible :: Layer a -> (NetworkElem a -> Bool) -> Bool
 layer `compatible` f = all tstf (map snd $ keys layer)

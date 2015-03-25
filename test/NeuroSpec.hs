@@ -6,6 +6,7 @@ import Test.Hspec
 import Control.Exception (evaluate)
 import System.Random
 import Data.List
+import GHC.Float(int2Double)
 
 import Neuro
 
@@ -13,12 +14,20 @@ import Neuro
 main :: IO ()
 main = hspec spec
 
-randomlist :: Int -> StdGen -> [Int]
-randomlist n = take n . unfoldr (Just . random)
+seed = mkStdGen 14
 
-dilist  = (replicate 5 $ newDelayedInput 0)
-ilist   = (replicate 5 $ newInput 0)          ++ take 2 dilist
---h1list  = [newNeuron ]
+doubleRandList n = take n (randoms seed :: [Double])
+
+dilist  = (repeat $ newDelayedInput 0)
+--dslist  = (repeat $ newDelaySink 0, ) TODO
+ilist   = (repeat $ newInput 0)
+olist   = (repeat $ newOutput 0)
+hlist   = [newNeuron (doubleRandList 5)
+                     "mean"
+                     (\x -> sum x / (int2Double . length $ x))        | _ <- [1..]]
+--                     (\x -> sum x / (int2Double $ length x))        | _ <- [1..]]
+
+--takeAfter a t xs = take t $ drop a xs
 
 spec :: Spec
 spec = do
@@ -42,10 +51,15 @@ spec = do
             it "is linked to a DelayedInput" $ do
                 evaluate (newDelaySink 0.1 1 $ newInput 0) `shouldThrow` anyException
 
---    describe "NetworkLayer" $ do
---        describe "InLayer" $ do
---            it ("randomlist ") $ do
---                seed <- newStdGen
---                randomlist 5 seed
---                1 `shouldBe` 1
---            it "can be build only of input and delay elements"  $ newNetworkLayer
+    describe "NetworkLayer" $ do
+        describe "InLayer" $ do
+            it "can be build only of input and delay elements"
+                $ (newNetworkLayer . isolatedLayer $ take 5 ilist ++ take 3 dilist) `shouldSatisfy` isInLayer
+
+        describe "HiddenLayer" $ do
+            it "can de build only of neurons and delays"
+                $ (newNetworkLayer . isolatedLayer $ take 8 hlist ++ take 1 dilist) `shouldSatisfy` isHiddenLayer
+
+        describe "OutLayer" $ do
+            it "can de build only of outputs and delays"
+                $ (newNetworkLayer . isolatedLayer $ take 8 olist ++ take 1 dilist) `shouldSatisfy` isOutLayer
