@@ -3,7 +3,16 @@ version:           1.0
 Build-Type:        Simple
 cabal-version:     >= 1.2
 
+library
+    build-depends:      containers >= 0.5.5.1
+
 executable neuro
   main-is:         Main.hs
   hs-source-dirs:  src
   build-depends:   base
+
+test-suite neuro-spec
+    type:           exitcode-stdio-1.0
+    hs-source-dirs: test
+    main-is:        NeuroSpec.hs
+    build-depends:  hspec   == 2.*

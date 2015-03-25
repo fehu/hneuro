@@ -3,11 +3,12 @@ module Neuro
 , newNeuron, newInput, newOutput, newDelaySink, newDelayedInput
 ,  isNeuron,  isInput,  isOutput,  isDelaySink,  isDelayedInput
 , NetworkLayer(..)
-, newLayer
+--, newLayer
 , test
 ) where
 
 import NamedFunc
+import Data.Map (Map, keys, elems)
 
 data NetworkElem a = Neuron {weights :: [a], transfer :: NamedFunc ([a] -> a)}
                    | Input a
@@ -36,6 +37,7 @@ isDelayedInput _                = False
 isDelaySink (DelaySink _ _ _)   = True
 isDelaySink _                   = False
 
+
 --isDelay = isDelayedInput || isDelaySink
 
 instance Show a => Show (NetworkElem a) where
@@ -46,48 +48,59 @@ instance Show a => Show (NetworkElem a) where
     show (DelayedInput x)           = "delayed" ++ show x
 
 -- --
-data NetworkLayer a = InLayer     [NetworkElem a] [NetworkLayer a]
-                    | HiddenLayer [NetworkElem a] [NetworkLayer a]
-                    | OutLayer    [NetworkElem a]
+type Layer a = Map (NetworkElem a) [NetworkLayer a]
 
-newLayer :: [NetworkElem a] -> [NetworkLayer a] -> NetworkLayer a
-newLayer out [] = if all outCompatible out
-                  then OutLayer out
-                  else error "incompatible layer "
-                where outCompatible x = case x of Output _ -> True
-                                                  DelaySink _ _ _-> True
-                                                  _ -> False
+data NetworkLayer a = InLayer     (Layer a)
+                    | HiddenLayer (Layer a)
+                    | OutLayer    (Layer a)
+
+
+compatible :: Layer a -> (NetworkElem a -> Bool) -> Bool
+layer `compatible` f = all tstf (keys layer)
+                     where tstf = \k -> foldr (\f a -> f(k) || a) False tst
+                           tst  = [f, isDelayedInput, isDelaySink]
+--noNext :: Layer a -> Bool
+noNext layer = all null $ elems layer
+
+newLayer :: Layer a -> NetworkLayer a
+newLayer layer | layer `compatible` isInput     = InLayer layer
+               | layer `compatible` isNeuron    = HiddenLayer layer
+               | layer `compatible` isOutput
+                            && noNext layer     = OutLayer layer
+
+--newLayer out [] = if all outCompatible out
+--                  then OutLayer out
+--                  else error "incompatible layer "
+--                where outCompatible x = case x of Output _ -> True
+--                                                  DelaySink _ _ _-> True
+--                                                  _ -> False
 --                                      Input _ -> True
 --                                      DelayedInput _ -> True
-
-
---layerCompatible layer f = all ff layer
---                        where ff = \x -> f(x) || case x of
 
 --newLayer elems next | elems == [] = error "empty layer"
 --                    | 1 = null
 
 instance Show a => Show (NetworkLayer a) where
-    show (InLayer  elems _)     = "InLayer" ++ show elems
-    show (OutLayer elems)       = "OutLayer" ++ show elems
-    show (HiddenLayer  elems _) = "HiddenLayer" ++ show elems
+    show (InLayer x)     = "InLayer" ++ show x
+    show (OutLayer x)    = "OutLayer" ++ show x
+    show (HiddenLayer x) = "HiddenLayer" ++ show x
 
-layerElems :: NetworkLayer a -> [NetworkElem a]
-layerElems (InLayer e _) = e
-layerElems (OutLayer e) = e
-layerElems (HiddenLayer e _) = e
+layerElems :: NetworkLayer a -> Layer a
+layerElems (InLayer x) = x
+layerElems (OutLayer x) = x
+layerElems (HiddenLayer x) = x
 
-nextLayer :: NetworkLayer a -> Maybe [NetworkLayer a]
-nextLayer (InLayer _ next)      = Just next
-nextLayer (OutLayer e)          = Nothing
-nextLayer (HiddenLayer _ next)  = Just next
+--nextLayer :: NetworkLayer a -> Maybe [NetworkLayer a]
+--nextLayer (InLayer _ next)      = Just next
+--nextLayer (OutLayer e)          = Nothing
+--nextLayer (HiddenLayer _ next)  = Just next
 
 --instance Functor NetworkLayer where
 --    fmap f (In elems next) = In (f elems) next
 
 -- --
 
-out = newLayer (replicate 5 $ newOutput 0) []
+--out = newLayer (replicate 5 $ newOutput 0) []
 test = do
     putStrLn $ show $ newNeuron [1,2] "foo" head
-    putStrLn $ show out
+--    putStrLn $ show out
