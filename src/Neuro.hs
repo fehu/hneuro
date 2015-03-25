@@ -1,27 +1,14 @@
 module Neuro
-( NamedFunc -- move
-, named -- move
-, Show
-, NetworkElem(..)
-, newNeuron
+( NetworkElem(..)
+, newNeuron, newInput, newOutput, newDelaySink, newDelayedInput
+,  isNeuron,  isInput,  isOutput,  isDelaySink,  isDelayedInput
 , NetworkLayer(..)
 , newLayer
 , test
 ) where
 
-data NamedFunc f = NamedFunc String f
+import NamedFunc
 
-named :: f -> String -> NamedFunc f
-f `named` s = NamedFunc s f
-
-instance Show (NamedFunc f) where show (NamedFunc n _) = n
-
--- data Network a = Neuron {weights :: [a], transfer :: NamedFunc ([a] -> a)} | Input a | Output a | Delay Int
--- instance Show a => Show (Network a) where show Neuron {weights = w, transfer = f} = "Neuron(" ++ show w ++ ", " ++ show f ++ ")"
--- newNeuron :: [a] -> String -> ([a] -> a) -> Neuron a
--- ?? data NetworkLayer a = In [NetworkElem a] [NetworkLayer a] | HiddenLayer [NetworkElem a] [NetworkLayer a] | Out [NetworkElem a]
-
--- --
 data NetworkElem a = Neuron {weights :: [a], transfer :: NamedFunc ([a] -> a)}
                    | Input a
                    | Output a
@@ -30,9 +17,26 @@ data NetworkElem a = Neuron {weights :: [a], transfer :: NamedFunc ([a] -> a)}
 
 newNeuron w s f         = Neuron w $ f `named` s
 newInput next_value     = Input next_value
+newDelayedInput x       = DelayedInput x
 newOutput out           = Output out
+newDelaySink x d s@(DelayedInput _) = DelaySink x d s
 
-newDelaySink x delay to = case to of DelayedInput _ -> DelaySink x delay to
+isNeuron (Neuron _ _)           = True
+isNeuron _                      = False
+
+isInput (Input _)               = True
+isInput _                       = False
+
+isOutput (Output _)             = True
+isOutput _                      = False
+
+isDelayedInput (DelayedInput _) = True
+isDelayedInput _                = False
+
+isDelaySink (DelaySink _ _ _)   = True
+isDelaySink _                   = False
+
+--isDelay = isDelayedInput || isDelaySink
 
 instance Show a => Show (NetworkElem a) where
     show (Neuron {weights = w, transfer = f}) = "Neuron(" ++ show w ++ ", " ++ show f ++ ")"
@@ -50,11 +54,18 @@ newLayer :: [NetworkElem a] -> [NetworkLayer a] -> NetworkLayer a
 newLayer out [] = if all outCompatible out
                   then OutLayer out
                   else error "incompatible layer "
-    where outCompatible x = case x of Output _ -> True
-                                      DelaySink _ _ _-> True
+                where outCompatible x = case x of Output _ -> True
+                                                  DelaySink _ _ _-> True
+                                                  _ -> False
 --                                      Input _ -> True
 --                                      DelayedInput _ -> True
-                                      _ -> False
+
+
+--layerCompatible layer f = all ff layer
+--                        where ff = \x -> f(x) || case x of
+
+--newLayer elems next | elems == [] = error "empty layer"
+--                    | 1 = null
 
 instance Show a => Show (NetworkLayer a) where
     show (InLayer  elems _)     = "InLayer" ++ show elems
