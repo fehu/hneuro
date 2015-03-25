@@ -47,9 +47,9 @@ spec = do
 
         describe "DelaySink" $ do
             it "guards a value to be delayed"
-                $ isDelaySink $ newDelaySink 0.1 1 $ newDelayedInput 0
+                $ isDelaySink $ newDelaySink 0.1 1 $ [newDelayedInput 0]
             it "is linked to a DelayedInput" $ do
-                evaluate (newDelaySink 0.1 1 $ newInput 0) `shouldThrow` anyException
+                evaluate (newDelaySink 0.1 1 $ [newInput 0]) `shouldThrow` anyException
 
     describe "NetworkLayer" $ do
         describe "InLayer" $ do

@@ -1,11 +1,11 @@
 module Neuro
-( NetworkElem(..)
+( NetworkElem  --(..)
 , newNeuron, newInput, newOutput, newDelaySink, newDelayedInput
 ,  isNeuron,  isInput,  isOutput,  isDelaySink,  isDelayedInput
 , Layer
 , isInLayer, isHiddenLayer, isOutLayer
 , newLayer, isolatedLayer
-, NetworkLayer(..)
+, NetworkLayer --(..)
 , newNetworkLayer
 , test
 ) where
@@ -17,7 +17,7 @@ import Data.Set (Set)
 data NetworkElem a = Neuron {weights :: [a], transfer :: NamedFunc ([a] -> a)}
                    | Input a
                    | Output a
-                   | DelaySink a Int (NetworkElem a)
+                   | DelaySink a Int [NetworkElem a]
                    | DelayedInput Int
                    deriving Eq
 
@@ -25,7 +25,9 @@ newNeuron w s f         = Neuron w $ f `named` s
 newInput next_value     = Input next_value
 newDelayedInput x       = DelayedInput x
 newOutput out           = Output out
-newDelaySink x d s@(DelayedInput _) = DelaySink x d s
+newDelaySink x d ixs    = if all isDelayedInput ixs
+                          then DelaySink x d ixs
+                          else error "DelaySink may be connected only to DelayedInput"
 
 isNeuron (Neuron _ _)           = True
 isNeuron _                      = False
@@ -96,18 +98,6 @@ newNetworkLayer layer | layer `compatible` isInput     = InLayer layer
                       | layer `compatible` isOutput
                                    && noNext layer     = OutLayer layer
 
---newLayer out [] = if all outCompatible out
---                  then OutLayer out
---                  else error "incompatible layer "
---                where outCompatible x = case x of Output _ -> True
---                                                  DelaySink _ _ _-> True
---                                                  _ -> False
---                                      Input _ -> True
---                                      DelayedInput _ -> True
-
---newLayer elems next | elems == [] = error "empty layer"
---                    | 1 = null
-
 instance Show a => Show (NetworkLayer a) where
     show (InLayer x)     = "InLayer" ++ show x
     show (OutLayer x)    = "OutLayer" ++ show x
@@ -118,17 +108,13 @@ layerElems (InLayer x) = x
 layerElems (OutLayer x) = x
 layerElems (HiddenLayer x) = x
 
---nextLayer :: NetworkLayer a -> Maybe [NetworkLayer a]
---nextLayer (InLayer _ next)      = Just next
---nextLayer (OutLayer e)          = Nothing
---nextLayer (HiddenLayer _ next)  = Just next
 
 --instance Functor NetworkLayer where
 --    fmap f (In elems next) = In (f elems) next
 
 -- --
 
---out = newLayer (replicate 5 $ newOutput 0) []
+out = newNetworkLayer $ isolatedLayer (replicate 5 $ newOutput 0)
 test = do
     putStrLn $ show $ newNeuron [1,2] "foo" head
---    putStrLn $ show out
+    putStrLn $ show out

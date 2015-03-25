@@ -1,4 +1,5 @@
 module Main where
 import Neuro
+import Neuro.DSL
 
-main = Neuro.test
+main = Neuro.DSL.test

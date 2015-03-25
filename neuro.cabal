@@ -1,27 +1,31 @@
-name:               neuro
-version:            0.0.0
-license:            MIT
-license-file:       LICENSE.md
-Build-Type:         Simple
-cabal-version:      >= 1.8
-
+name: neuro
+version: 0.0.0
+cabal-version: >=1.8
+build-type: Simple
+license: MIT
+license-file: LICENSE.md
+data-dir: ""
+ 
 library
-    build-depends:      base, containers, random
-    hs-source-dirs:     src
-    exposed-modules:    NamedFunc, Neuro
-
-
+    build-depends: base -any, containers -any, random -any
+    exposed-modules: NamedFunc Neuro
+    exposed: True
+    buildable: True
+    hs-source-dirs: src
+    other-modules: Neuro.DSL NeuroDSL
+ 
 executable neuro-run
-    main-is:         Main.hs
-    hs-source-dirs:  src
-    build-depends:   base, containers, random
-
+    build-depends: base -any, containers -any, random -any
+    main-is: Main.hs
+    buildable: True
+    hs-source-dirs: src
+    other-modules: NeuroDSL
+ 
 test-suite neuro-spec
-    type:           exitcode-stdio-1.0
+    build-depends: hspec ==2.*, neuro -any, base -any, containers -any,
+                   random -any
+    type: exitcode-stdio-1.0
+    main-is: Spec.hs
+    buildable: True
     hs-source-dirs: test
-    main-is:        Spec.hs
-    build-depends:  hspec   == 2.*
-                  , neuro
-                  , base
-                  , containers
-                  , random
+ 
