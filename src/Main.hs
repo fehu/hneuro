@@ -18,7 +18,7 @@ layer2 = Layer $ replicate 10 Neuron
 ulayer = Layer (replicate 2 Out ++ [Delay i | i <- [1..2]])
 
 struct = neuroNetStructure ilayer [layer1, layer2] ulayer
-istruct = fst $ identifyNeuroNetStruct 0 struct
+istruct = identifyNeuroNetStruct struct
 
 all2all' = all2all istruct
 
