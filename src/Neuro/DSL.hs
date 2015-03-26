@@ -4,17 +4,23 @@ module Neuro.DSL
 , Connections(..)
 , (+:+)
 , Id, LastId, IdentifiedLayer
-, zipId, zzipId, getILayer
+, zipId, zzipId, getILayer, joinNetStruct
 , ElemSel
 , sel, sel'
 , Link
 , (-->), all2all
-, ANeuroNetStruct, NeuroNetStruct, IdentifiedNeuroNetStruct
+, HardConnections
+, getConnections, getConnectionIds
+, ANeuroNetStruct(..), NeuroNetStruct, IdentifiedNeuroNetStruct
 , neuroNetStructure, identifyNeuroNetStruct
+, resolveConnections
 --, test
 ) where
 
 import Data.Map (Map, fromList, assocs)
+import Data.Foldable (toList)
+
+flatMap f = concatMap (Data.Foldable.toList . f)
 
 --  -- DSL Elements
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
@@ -68,7 +74,13 @@ zzipId :: LastId -> [[a]] -> ([ZippedId a], LastId)
 type IdentifiedNeuroNetStruct = ANeuroNetStruct IdentifiedLayer
 identifyNeuroNetStruct :: LastId -> NeuroNetStruct -> (IdentifiedNeuroNetStruct, LastId)
 
-type NeuroNet = (IdentifiedNeuroNetStruct, Connections)
+data HardConnections = HardConnections [Link]
+getConnections   :: HardConnections -> [((Id, Elem), (Id, Elem))]
+getConnectionIds :: HardConnections -> [(Id, Id)]
+
+resolveConnections :: IdentifiedNeuroNetStruct ->  Connections -> HardConnections
+
+type NeuroNet = (IdentifiedNeuroNetStruct, HardConnections)
 
 
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
@@ -83,6 +95,11 @@ getILayer i (ANeuroNetStruct _ hid out) = if i <= length hid
                                                then out
                                           else error "out of range"
 
+getConnections (HardConnections l) = map f l
+                                   where f x = case x of (HardLink from to) -> (from, to)
+
+getConnectionIds c = map (\((i1,_), (i2,_)) -> (i1, i2)) $ getConnections c
+
 (Connections c1) +:+ (Connections c2) = Connections (c1 ++ c2)
 
 l `sel`  i  = Sel l [i]
@@ -94,11 +111,11 @@ all2all inet from to exceptFrom exceptTo = Connections [HardLink a b | a <- fFro
                                          where fFrom = fb exceptFrom $ assocs $ getILayer from inet
                                                fTo   = fb exceptTo   $ assocs $ getILayer to inet
                                                ff e  = \(_,x) -> not $ x `elem` e
-                                               fb e l = map fst $ filter (ff e) $ zip l [0..]
+                                               fb e l = map fst $ filter (ff e) $ zip l [1..]
 
-joinNetStruct (ANeuroNetStruct i h o) = [i] ++ h ++ [o]
+joinNetStruct (ANeuroNetStruct i h o) = reverse $ [i] ++ h ++ [o]
 
-neuroNetStructure inp hid out   = ANeuroNetStruct inp hid out
+neuroNetStructure inp hid out = ANeuroNetStruct inp hid out
 
 zipId i xs = (zipped, i+len+1)
            where len = length xs
@@ -108,16 +125,23 @@ zzipId i xss = foldr f ([], i) xss
              where f xs (ixs, ii) = (ixs ++ [fst r], snd r)
                                   where r = zipId ii xs
 
-identifyNeuroNetStructFoldF f (acc, i) = do
-    (xs, n) <- f i
-    (acc ++ xs, n)
-
 identifyNeuroNetStruct i nnet = (anet, ni)
                               where anet = ANeuroNetStruct (head l) ((init . tail) l) (last l)
                                     j   = joinNetStruct nnet
                                     zzipped = zzipId i $ map getLayer j
                                     l   = map fromList $ fst zzipped
                                     ni  = snd zzipped
+
+resolveConnections inet (Connections links) = HardConnections $ flatMap f links
+                               where f link = case link of h@(HardLink _ _) -> [h]
+                                                           w@(WeakLink _ _) -> convertWeak inet w
+
+shiftOneIndexing i = i - 1
+
+hsel inet l n = (assocs $ getILayer l inet) !! shiftOneIndexing n
+
+convertWeak inet (WeakLink (Sel fromL fromN) (Sel toL toN)) =
+    [ HardLink (hsel inet fromL from) (hsel inet toL to) | from <- fromN, to <- toN ]
 
     --          -- --          -- --          -- --          -- --          -- --          --
     --          -- --          -- --          -- --          -- --          -- --          --
