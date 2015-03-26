@@ -7,7 +7,7 @@ module Neuro
 , newLayer, isolatedLayer
 , NetworkLayer --(..)
 , newNetworkLayer
-, test
+--, test
 ) where
 
 import NamedFunc

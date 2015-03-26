@@ -1,15 +1,24 @@
 module Neuro.DSL
-( Elem
+( Elem(..)
 , Layer(..)
-, (-->)
+, Connections(..)
 , (+:+)
-, all2all
-, test
+, Id, LastId, IdentifiedLayer
+, zipId, zzipId, getILayer
+, ElemSel
+, sel, sel'
+, Link
+, (-->), all2all
+, ANeuroNetStruct, NeuroNetStruct, IdentifiedNeuroNetStruct
+, neuroNetStructure, identifyNeuroNetStruct
+--, test
 ) where
 
 import Data.Map (Map, fromList, assocs)
 
 --  -- DSL Elements
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 
 data Elem = Neuron | In | Out | Delayed Int | Delay Int
     deriving (Eq, Show)
@@ -31,15 +40,16 @@ type LastId = Id
 type ZippedId a = [(Id, a)]
 type ZuppedIdL a = (ZippedId a, LastId)
 
-type IdentifiedLayer = Map Id Elem
-
 data Link = HardLink (Id, Elem) (Id, Elem)
           | WeakLink ElemSel ElemSel
           deriving (Eq, Show)
 
 (-->)   :: ElemSel -> ElemSel -> Link
-        --                             layer from  layer to    except from   except to
 all2all :: IdentifiedNeuroNetStruct -> Int       -> Int     -> [Int]      -> [Int] -> Connections
+
+
+type IdentifiedLayer = Map Id Elem
+getILayer :: Int -> IdentifiedNeuroNetStruct -> IdentifiedLayer
 
 
 data ANeuroNetStruct a = ANeuroNetStruct { inputs :: a
@@ -58,11 +68,14 @@ zzipId :: LastId -> [[a]] -> ([ZippedId a], LastId)
 type IdentifiedNeuroNetStruct = ANeuroNetStruct IdentifiedLayer
 identifyNeuroNetStruct :: LastId -> NeuroNetStruct -> (IdentifiedNeuroNetStruct, LastId)
 
+type NeuroNet = (IdentifiedNeuroNetStruct, Connections)
 
---  --
+
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+
 getLayer (Layer xs) = xs
 
-getILayer :: Int -> IdentifiedNeuroNetStruct -> IdentifiedLayer
 getILayer 0 (ANeuroNetStruct inp _ _)   = inp
 getILayer i (ANeuroNetStruct _ hid out) = if i <= length hid
                                           then hid !! (i-1)
@@ -77,16 +90,11 @@ l `sel'` is = Sel l is
 
 from --> to = WeakLink from to
 
---a@(Delay _) --> b@(Delayed _)   = Link a b
---(Delay _) --> _                 = error "Delay can only be connected to Delayed"
---a --> b                         = Link a b
-
 all2all inet from to exceptFrom exceptTo = Connections [HardLink a b | a <- fFrom, b <- fTo]
                                          where fFrom = fb exceptFrom $ assocs $ getILayer from inet
                                                fTo   = fb exceptTo   $ assocs $ getILayer to inet
                                                ff e  = \(_,x) -> not $ x `elem` e
                                                fb e l = map fst $ filter (ff e) $ zip l [0..]
---                                                      where ll = map fst assocs $ getILayer from inet
 
 joinNetStruct (ANeuroNetStruct i h o) = [i] ++ h ++ [o]
 
@@ -99,12 +107,6 @@ zipId i xs = (zipped, i+len+1)
 zzipId i xss = foldr f ([], i) xss
              where f xs (ixs, ii) = (ixs ++ [fst r], snd r)
                                   where r = zipId ii xs
---             do (nxs, ni) <- zipId i xs
---                                      (nxs:ixs, ni)
-
-
---withZippedId :: (a -> b) -> ZuppedIdL a -> ZuppedIdL b
---withZippedId f (xs, z) = (map (\(i, x) -> (i, f x)) xs, z)
 
 identifyNeuroNetStructFoldF f (acc, i) = do
     (xs, n) <- f i
@@ -117,28 +119,5 @@ identifyNeuroNetStruct i nnet = (anet, ni)
                                     l   = map fromList $ fst zzipped
                                     ni  = snd zzipped
 
-
-
-------------------- Tst -------------------
-
-ilayer = Layer [In, Delayed 1, In, Delayed 2, In]
-layer1 = Layer [Neuron, Neuron, Neuron, Delayed 3]
-layer2 = Layer $ replicate 10 Neuron
-ulayer = Layer (replicate 2 Out ++ [Delay i | i <- [1..3]])
-
-struct = neuroNetStructure ilayer [layer1, layer2] ulayer
-istruct = identifyNeuroNetStruct 0 struct
-
-all2all' = all2all $ fst istruct
-
-connections = (all2all' 0 1 [] [])
-          +:+ (all2all' 1 2 [] [0, 1, 8, 9])
-          +:+ (Connections [])
-
-
-test :: IO ()
-test = putStrLn $ show connections
-
---Connections [
---
---]
+    --          -- --          -- --          -- --          -- --          -- --          --
+    --          -- --          -- --          -- --          -- --          -- --          --
