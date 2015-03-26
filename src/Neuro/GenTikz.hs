@@ -23,11 +23,6 @@ a ~> b = (a, b)
 
 type TikzParams = [TikzParam]
 type TikzParam = (String, String)
---data TikzParam = RelOf { rel :: String
---                           , dir :: String
---                           , dist :: Maybe String
---                           }
---                   | TBD
 
 genLayer  :: Int -> IdentifiedLayer -> TikzParams -> (Int -> TikzParams) -> String
 genStruct :: IdentifiedNeuroNetStruct -> String
@@ -88,14 +83,6 @@ genStruct s = intercalate "\n" $ l0:ll
                            p = [nodeDistMm 2]
                            np ln 1 = ["right" ~> ("1cm of " ++ show ln)]
                            np  _ _ = []
-
---genStruct s = intercalate "\n" $ l0:ll
---            where l0 = genLayer 0 (getILayer 0 s) [nodeDistMm 2] []
---                  ll = [genLayer i l p $ np l | i <- [1..n-1], let l = getILayer i s]
---                     where j = joinNetStruct s
---                           n = length j
---                           p     = [nodeDistMm 2]
---                           np id = ["right" ~> ("1cm of " ++ show (i-1) ++ "-\\x")]
 
 genConnections c p = intercalate "\n" $ map f $ getConnectionIds c
                    where f = \(x, y) -> tikzDraw p [tikzId x ++ " -- " ++ tikzId y]

@@ -1,11 +1,11 @@
 module Neuro
-( NetworkElem  --(..)
+( NetworkElem
 , newNeuron, newInput, newOutput, newDelaySink, newDelayedInput
 ,  isNeuron,  isInput,  isOutput,  isDelaySink,  isDelayedInput
 , Layer
 , isInLayer, isHiddenLayer, isOutLayer
 , newLayer, isolatedLayer
-, NetworkLayer --(..)
+, NetworkLayer
 , newNetworkLayer
 --, test
 ) where
@@ -14,59 +14,68 @@ import NamedFunc
 import Data.Map (Map, keys, elems, fromList)
 import Data.Set (Set)
 
-data NetworkElem a = Neuron {weights :: [a], transfer :: NamedFunc ([a] -> a)}
-                   | Input a
-                   | Output a
-                   | DelaySink a Int [NetworkElem a]
-                   | DelayedInput Int
+--  -- Network Elements
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+
+type ElemId = Int
+
+data NetworkElem a = Neuron {id :: ElemId, weights :: [a], transfer :: NamedFunc ([a] -> a)}
+                   | Input         ElemId a
+                   | Output        ElemId a
+                   | DelaySink     ElemId a [NetworkElem a]
+                   | DelayedInput  ElemId Int [a]
                    deriving Eq
 
-newNeuron w s f         = Neuron w $ f `named` s
-newInput next_value     = Input next_value
-newDelayedInput x       = DelayedInput x
-newOutput out           = Output out
-newDelaySink x d ixs    = if all isDelayedInput ixs
-                          then DelaySink x d ixs
+newNeuron id w s f      = Neuron id w $ f `named` s
+newInput id x           = Input id x
+newOutput id x          = Output id x
+newDelayedInput id d xs = DelayedInput id d xs
+newDelaySink id x links = if all isDelayedInput links
+                          then DelaySink id x links
                           else error "DelaySink may be connected only to DelayedInput"
 
-isNeuron (Neuron _ _)           = True
-isNeuron _                      = False
+isNeuron (Neuron _ _ _)             = True
+isNeuron _                          = False
 
-isInput (Input _)               = True
-isInput _                       = False
+isInput (Input _ _)                 = True
+isInput _                           = False
 
-isOutput (Output _)             = True
-isOutput _                      = False
+isOutput (Output _ _)               = True
+isOutput _                          = False
 
-isDelayedInput (DelayedInput _) = True
-isDelayedInput _                = False
+isDelayedInput (DelayedInput _ _ _) = True
+isDelayedInput _                    = False
 
-isDelaySink (DelaySink _ _ _)   = True
-isDelaySink _                   = False
-
-
---isDelay = isDelayedInput || isDelaySink
+isDelaySink (DelaySink _ _ _)       = True
+isDelaySink _                       = False
 
 instance Show a => Show (NetworkElem a) where
-    show (Neuron {weights = w, transfer = f}) = "Neuron(" ++ show w ++ ", " ++ show f ++ ")"
-    show (Input x)                  = "in "  ++ show x
-    show (Output x)                 = "out " ++ show x
-    show (DelaySink x delay link)   = show x ++ " -- delay " ++ show delay ++ " -->" ++ show link
-    show (DelayedInput x)           = "delayed" ++ show x
+    show (Neuron id w f)            = "neuron:" ++ show id ++ "(" ++ show w ++ ", " ++ show f ++ ")"
+    show (Input id x)               = "in:"     ++ show id ++ "=" ++ show x
+    show (Output id x)              = "out:"    ++ show id ++ "=" ++ show x
+    show (DelaySink id x link)      = "delay:"  ++ show id ++ "=" ++ show x ++ "-->" ++ show link
+    show (DelayedInput id d xs)     = "delayed:" ++ show id ++ "=" ++ show (head xs)
 
 instance Eq a => Ord (NetworkElem a) where
-    (Neuron w1 f1) `compare` (Neuron w2 f2) = LT
---    TODO
+    (Neuron id1 _ _)        `compare` (Neuron id2 _ _)       = id1 `compare` id2
+    (Input id1 _)           `compare` (Input id2 _)          = id1 `compare` id2
+    (Output id1 _)          `compare` (Output id2 _)         = id1 `compare` id2
+    (DelaySink id1 _ _)     `compare` (DelaySink id2 _ _)    = id1 `compare` id2
+    (DelayedInput id1 _ _)  `compare` (DelayedInput id2 _ _) = id1 `compare` id2
 
 
--- --
-type LayerElemKey a = (Int, NetworkElem a)
+
+
+--  -- Network Layers
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 
 --instance Eq (Int, NetworkElem a) where (i1, _) == (i2, _) = i1 == i2
 
-type Layer a = Map (LayerElemKey a) [NetworkLayer a]
+type Layer a = Map (ElemId, NetworkElem a) [NetworkElem a]
 
-newLayer :: Eq a => [(NetworkElem a, [NetworkLayer a])] -> Layer a
+newLayer :: Eq a => [(NetworkElem a, [NetworkElem a])] -> Layer a
 newLayer dict = fromList $ map (\((k,v),i) -> ((i,k), v)) $ zip dict [1..]
 
 isolatedLayer :: Eq a => [NetworkElem a] -> Layer a
@@ -89,7 +98,7 @@ compatible :: Layer a -> (NetworkElem a -> Bool) -> Bool
 layer `compatible` f = all tstf (map snd $ keys layer)
                      where tstf = \k -> foldr (\f a -> f(k) || a) False tst
                            tst  = [f, isDelayedInput, isDelaySink]
---noNext :: Layer a -> Bool
+
 noNext layer = all null $ elems layer
 
 newNetworkLayer :: Layer a -> NetworkLayer a
@@ -98,23 +107,34 @@ newNetworkLayer layer | layer `compatible` isInput     = InLayer layer
                       | layer `compatible` isOutput
                                    && noNext layer     = OutLayer layer
 
-instance Show a => Show (NetworkLayer a) where
-    show (InLayer x)     = "InLayer" ++ show x
-    show (OutLayer x)    = "OutLayer" ++ show x
-    show (HiddenLayer x) = "HiddenLayer" ++ show x
-
 layerElems :: NetworkLayer a -> Layer a
 layerElems (InLayer x) = x
 layerElems (OutLayer x) = x
 layerElems (HiddenLayer x) = x
 
+instance Show a => Show (NetworkLayer a) where
+    show (InLayer x)     = "InLayer" ++ show x
+    show (OutLayer x)    = "OutLayer" ++ show x
+    show (HiddenLayer x) = "HiddenLayer" ++ show x
 
 --instance Functor NetworkLayer where
 --    fmap f (In elems next) = In (f elems) next
 
 -- --
 
-out = newNetworkLayer $ isolatedLayer (replicate 5 $ newOutput 0)
-test = do
-    putStrLn $ show $ newNeuron [1,2] "foo" head
-    putStrLn $ show out
+--out = newNetworkLayer $ isolatedLayer (replicate 5 $ newOutput 0)
+--test = do
+--    putStrLn $ show $ newNeuron [1,2] "foo" head
+--    putStrLn $ show out
+
+
+
+
+--  -- Network Elements Connections
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+
+data Synapse a = Synapse { from :: NetworkElem a, to :: NetworkElem a }
+
+
+
