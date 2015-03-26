@@ -18,16 +18,19 @@ seed = mkStdGen 14
 
 nId  = 0
 
+any' x = True
+
 doubleRandList n = take n (randoms seed :: [Double])
 
-dilist  = (repeat $ newDelayedInput nId 0 [])
---dslist  = (repeat $ newDelaySink 0, ) TODO
-ilist   = (repeat $ newInput nId 0.1)
-olist   = (repeat $ newOutput nId 2.7e-3)
-hlist   = [newNeuron i
-                     (doubleRandList 5)
-                     "mean"
-                     (\x -> sum x / (int2Double . length $ x))        | i <- [1..]]
+dilist = [newDelayedInput i 0 [] | i <- [0..]]
+ilist  = [newInput  i 0 | i <- [0..]]
+olist  = [newOutput i 0 | i <- [0..]]
+
+hlist  = [newNeuron i
+                    (doubleRandList 5)
+                    "mean"
+                    (\x -> sum x / (int2Double . length $ x))
+         | i <- [1..]]
 
 spec :: Spec
 spec = do

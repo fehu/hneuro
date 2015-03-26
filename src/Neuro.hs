@@ -1,5 +1,6 @@
 module Neuro
 ( NetworkElem
+, getId
 , newNeuron, newInput, newOutput, newDelaySink, newDelayedInput
 ,  isNeuron,  isInput,  isOutput,  isDelaySink,  isDelayedInput
 , Layer
@@ -7,7 +8,6 @@ module Neuro
 , newLayer, isolatedLayer
 , NetworkLayer
 , newNetworkLayer
---, test
 ) where
 
 import NamedFunc
@@ -50,12 +50,18 @@ isDelayedInput _                    = False
 isDelaySink (DelaySink _ _ _)       = True
 isDelaySink _                       = False
 
+getId (Neuron id _ _)       = id
+getId (Input id _)          = id
+getId (Output id _)         = id
+getId (DelaySink id _ _)    = id
+getId (DelayedInput id _ _) = id
+
 instance Show a => Show (NetworkElem a) where
     show (Neuron id w f)            = "neuron:" ++ show id ++ "(" ++ show w ++ ", " ++ show f ++ ")"
     show (Input id x)               = "in:"     ++ show id ++ "=" ++ show x
     show (Output id x)              = "out:"    ++ show id ++ "=" ++ show x
     show (DelaySink id x link)      = "delay:"  ++ show id ++ "=" ++ show x ++ "-->" ++ show link
-    show (DelayedInput id d xs)     = "delayed:" ++ show id ++ "=" ++ show (head xs)
+    show (DelayedInput id d xs)     = "delayed:" ++ show id ++ "=" ++ show xs
 
 instance Eq a => Ord (NetworkElem a) where
     (Neuron id1 _ _)        `compare` (Neuron id2 _ _)       = id1 `compare` id2
@@ -71,12 +77,10 @@ instance Eq a => Ord (NetworkElem a) where
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 
---instance Eq (Int, NetworkElem a) where (i1, _) == (i2, _) = i1 == i2
-
-type Layer a = Map (ElemId, NetworkElem a) [NetworkElem a]
+type Layer a = Map ElemId (NetworkElem a, [NetworkElem a])
 
 newLayer :: Eq a => [(NetworkElem a, [NetworkElem a])] -> Layer a
-newLayer dict = fromList $ map (\((k,v),i) -> ((i,k), v)) $ zip dict [1..]
+newLayer dict = fromList $ map (\(k,v) -> (getId k, (k, v))) dict
 
 isolatedLayer :: Eq a => [NetworkElem a] -> Layer a
 isolatedLayer l = newLayer $ zip l $ repeat []
@@ -95,17 +99,14 @@ isOutLayer (OutLayer _)         = True
 isOutLayer _                    = False
 
 compatible :: Layer a -> (NetworkElem a -> Bool) -> Bool
-layer `compatible` f = all tstf (map snd $ keys layer)
+layer `compatible` f = all tstf (map fst $ elems layer)
                      where tstf = \k -> foldr (\f a -> f(k) || a) False tst
                            tst  = [f, isDelayedInput, isDelaySink]
 
-noNext layer = all null $ elems layer
-
 newNetworkLayer :: Layer a -> NetworkLayer a
-newNetworkLayer layer | layer `compatible` isInput     = InLayer layer
-                      | layer `compatible` isNeuron    = HiddenLayer layer
-                      | layer `compatible` isOutput
-                                   && noNext layer     = OutLayer layer
+newNetworkLayer layer | layer `compatible` isInput  = InLayer layer
+                      | layer `compatible` isNeuron = HiddenLayer layer
+                      | layer `compatible` isOutput = OutLayer layer
 
 layerElems :: NetworkLayer a -> Layer a
 layerElems (InLayer x) = x
@@ -120,12 +121,6 @@ instance Show a => Show (NetworkLayer a) where
 --instance Functor NetworkLayer where
 --    fmap f (In elems next) = In (f elems) next
 
--- --
-
---out = newNetworkLayer $ isolatedLayer (replicate 5 $ newOutput 0)
---test = do
---    putStrLn $ show $ newNeuron [1,2] "foo" head
---    putStrLn $ show out
 
 
 
