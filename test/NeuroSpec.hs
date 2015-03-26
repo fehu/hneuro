@@ -1,6 +1,7 @@
 module NeuroSpec(main, spec)
 where
 
+import NamedFunc
 import Test.Hspec
 --import Test.QuickCheck
 import Control.Exception (evaluate)
@@ -16,28 +17,31 @@ main = hspec spec
 
 seed = mkStdGen 14
 
-nId  = 0
+nId  = (0, 1)
 
 any' x = True
 
 doubleRandList n = take n (randoms seed :: [Double])
 
-dilist = [newDelayedInput i 0 [] | i <- [0..]]
-ilist  = [newInput  i 0 | i <- [0..]]
-olist  = [newOutput i 0 | i <- [0..]]
+-- TODO
+--dilist = [newDelayedInput (0, i) 0 [] | i <- [0..]]
+ilist  = [newInput  (0, i) 0 | i <- [0..]]
+olist  = [newOutput (0, i) 0 | i <- [0..]]
 
-hlist  = [newNeuron i
-                    (doubleRandList 5)
-                    "mean"
-                    (\x -> sum x / (int2Double . length $ x))
-         | i <- [1..]]
+mean :: [Double] -> Double
+mean x = sum x / (int2Double . length $ x)
+
+hlist j = [newNeuron (j, i)
+                     (doubleRandList 5)
+                     (named mean "mean")
+          | i <- [1..]]
 
 spec :: Spec
 spec = do
     describe "Neuro.NetworkElem" $ do
         describe "Neuron" $ do
             it "is defined by sinaptic weights and transfer function" $ do
-                isNeuron $ newNeuron nId [1..4] "head" head
+                isNeuron $ newNeuron nId [1..4] (head `named` "head")
 
         describe "Input" $ do
             it "contains input value for current iteration"  $ isInput $ newInput nId 4.0
@@ -57,12 +61,12 @@ spec = do
     describe "NetworkLayer" $ do
         describe "InLayer" $ do
             it "can be build only of input and delay elements"
-                $ (newNetworkLayer . isolatedLayer $ take 5 ilist ++ take 3 dilist) `shouldSatisfy` isInLayer
+                $ (newNetworkLayer . newLayer $ take 5 ilist) `shouldSatisfy` isInLayer    -- TODO ++ take 3 dilist
 
         describe "HiddenLayer" $ do
             it "can de build only of neurons and delays"
-                $ (newNetworkLayer . isolatedLayer $ take 8 hlist ++ take 1 dilist) `shouldSatisfy` isHiddenLayer
+                $ (newNetworkLayer . newLayer $ take 8 $ hlist 1) `shouldSatisfy` isHiddenLayer    -- TODO ++ take 1 dilist
 
         describe "OutLayer" $ do
             it "can de build only of outputs and delays"
-                $ (newNetworkLayer . isolatedLayer $ take 8 olist ++ take 1 dilist) `shouldSatisfy` isOutLayer
+                $ (newNetworkLayer . newLayer $ take 8 olist) `shouldSatisfy` isOutLayer   -- TODO ++ take 1 dilist

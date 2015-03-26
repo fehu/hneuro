@@ -1,13 +1,15 @@
 module Neuro
 ( NetworkElem
-, getId
+, ElemId, getId
 , newNeuron, newInput, newOutput, newDelaySink, newDelayedInput
 ,  isNeuron,  isInput,  isOutput,  isDelaySink,  isDelayedInput
 , Layer
 , isInLayer, isHiddenLayer, isOutLayer
-, newLayer, isolatedLayer
+, newLayer
 , NetworkLayer
 , newNetworkLayer
+, Synapse(..)
+, Network(..)
 ) where
 
 import NamedFunc
@@ -18,7 +20,7 @@ import Data.Set (Set)
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 
-type ElemId = Int
+type ElemId = (Int, Int)
 
 data NetworkElem a = Neuron {id :: ElemId, weights :: [a], transfer :: NamedFunc ([a] -> a)}
                    | Input         ElemId a
@@ -27,7 +29,7 @@ data NetworkElem a = Neuron {id :: ElemId, weights :: [a], transfer :: NamedFunc
                    | DelayedInput  ElemId Int [a]
                    deriving Eq
 
-newNeuron id w s f      = Neuron id w $ f `named` s
+newNeuron id w f        = Neuron id w f
 newInput id x           = Input id x
 newOutput id x          = Output id x
 newDelayedInput id d xs = DelayedInput id d xs
@@ -77,13 +79,10 @@ instance Eq a => Ord (NetworkElem a) where
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 
-type Layer a = Map ElemId (NetworkElem a, [NetworkElem a])
+type Layer a = Map ElemId (NetworkElem a)
 
-newLayer :: Eq a => [(NetworkElem a, [NetworkElem a])] -> Layer a
-newLayer dict = fromList $ map (\(k,v) -> (getId k, (k, v))) dict
-
-isolatedLayer :: Eq a => [NetworkElem a] -> Layer a
-isolatedLayer l = newLayer $ zip l $ repeat []
+newLayer :: Eq a => [NetworkElem a] -> Layer a
+newLayer xs = fromList $ map (\x -> (getId x, x)) xs
 
 data NetworkLayer a = InLayer     (Layer a)
                     | HiddenLayer (Layer a)
@@ -99,7 +98,7 @@ isOutLayer (OutLayer _)         = True
 isOutLayer _                    = False
 
 compatible :: Layer a -> (NetworkElem a -> Bool) -> Bool
-layer `compatible` f = all tstf (map fst $ elems layer)
+layer `compatible` f = all tstf (elems layer)
                      where tstf = \k -> foldr (\f a -> f(k) || a) False tst
                            tst  = [f, isDelayedInput, isDelaySink]
 
@@ -129,7 +128,14 @@ instance Show a => Show (NetworkLayer a) where
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 
-data Synapse a = Synapse { from :: NetworkElem a, to :: NetworkElem a }
+data Synapse = Synapse { from :: ElemId, to :: ElemId }
+
+
+--  -- The Network
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+
+data Network a = Network [NetworkLayer a] [Synapse]
 
 
 

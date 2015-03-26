@@ -9,7 +9,8 @@ module Neuro.DSL
 , sel, sel'
 , Link
 , (-->), all2all
-, HardConnections
+, linkId
+, HardConnections(..)
 , getConnections, getConnectionIds
 , ANeuroNetStruct(..), NeuroNetStruct, IdentifiedNeuroNetStruct
 , neuroNetStructure, identifyNeuroNetStruct
@@ -50,6 +51,7 @@ data Link = HardLink (Id, Elem) (Id, Elem)
 (-->)   :: ElemSel -> ElemSel -> Link
 all2all :: IdentifiedNeuroNetStruct -> Int       -> Int     -> [Int]      -> [Int] -> Connections
 
+linkId  :: Link -> Maybe (Id, Id)
 
 type IdentifiedLayer = Map Id Elem
 getILayer :: Int -> IdentifiedNeuroNetStruct -> IdentifiedLayer
@@ -110,6 +112,9 @@ all2all inet from to exceptFrom exceptTo = Connections [HardLink a b | a <- fFro
                                                ff e  = \(_,x) -> not $ x `elem` e
                                                fb e l = map fst $ filter (ff e) $ zip l [1..]
 
+linkId link = case link of (HardLink (from, _) (to, _)) -> Just (from, to)
+                           _                            -> Nothing
+
 joinNetStruct (ANeuroNetStruct i h o) = [i] ++ h ++ [o] -- reverse $
 
 neuroNetStructure inp hid out = ANeuroNetStruct inp hid out
@@ -121,10 +126,16 @@ identifyNeuroNetStruct nnet = ANeuroNetStruct (head l) ((init . tail) l) (last l
                                                   where ll = [ (id, e) | (e, n) <- zip layer [1..]
                                                              , let id = (k, n)
                                                              ]
+isDelay (Delay _) = True
+isDelay _         = False
 
-resolveConnections inet (Connections links) = HardConnections $ flatMap f links
+resolveConnections inet (Connections links) = if all testConn conn
+                                              then HardConnections conn
+                                              else error "back referencing non-delay synapses present"
                                where f link = case link of h@(HardLink _ _) -> [h]
                                                            w@(WeakLink _ _) -> convertWeak inet w
+                                     conn   = flatMap f links
+                                     testConn (HardLink (from, e) (to, _)) = isDelay e || to > from
 
 hsel inet l n = (assocs $ getILayer l inet) !! shiftOneIndexing n
 
