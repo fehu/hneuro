@@ -137,3 +137,5 @@ data Synapse = Synapse { from :: ElemId, to :: ElemId }
 
 data Network a = Network [NetworkLayer a] [Synapse]
     deriving Show
+
+

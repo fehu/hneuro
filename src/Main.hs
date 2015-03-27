@@ -10,14 +10,14 @@ import Neuro.Create
 
 import Data.List
 
-main = crTest
+main = tikzTest
 
 ------------------- DSL Tst -------------------
 
 ilayer = Layer [In, Delayed 1, In, Delayed 2, In]
 layer1 = Layer [Neuron, Neuron, Neuron, Delayed 3]
 layer2 = Layer $ replicate 10 Neuron
-ulayer = Layer (replicate 2 Out ++ [Delay])
+ulayer = Layer (replicate 2 Out ++ [Delay, Delay])
 
 struct = neuroNetStructure ilayer [layer1, layer2] ulayer
 istruct = identifyNeuroNetStruct struct
@@ -38,12 +38,6 @@ nnet = (istruct, rconnections)
 
 ------------------- Creation Tst -------------------
 
---cr = fromDSL nnet CConf { zero = 0
---                        , weights  = \x -> [0]
---                        , transfer = \x -> head `named` "head"
---                        }
-
---cnf :: CreationConf Float
 cnf = CConf { zero = 0
             , weights = \_ -> [1, 2]
             , transfer = \_ -> (head `named` "head")
@@ -65,11 +59,8 @@ writeTst txt = writeFile "test.tikz" txt
 
 tikzTest :: IO ()
 tikzTest = do
-    let d   = intercalate "\n" defs
-    let llt = genStruct istruct
-    let cc  = genConnections rconnections []
-    let txt = intercalate "\n\n" [d, llt, cc]
-    let res = tikzScope "tikzpicture" txt []
-    writeTst res
+    let tikzNet = genTikz (istruct, rconnections)
+    let tikz    = tikzScope "tikzpicture" tikzNet []
+    writeTst tikz
 
 --------------------------------------------------

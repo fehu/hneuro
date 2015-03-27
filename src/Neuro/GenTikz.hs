@@ -1,11 +1,9 @@
  {-# LANGUAGE OverloadedStrings #-}
 
-module Neuro.GenTikz (
---genTikz
- genLayer
+module Neuro.GenTikz
+( genTikz
 , (~>)
 , defs
-
 , genStruct, genConnections
 
 , tikzScope
@@ -17,7 +15,7 @@ import Data.Map(keys)
 
 import Neuro.DSL
 
---genTikz :: NeuroNet -> String -- TODO ?String?
+genTikz :: NeuroNet -> String -- TODO ?String?
 
 a ~> b = (a, b)
 
@@ -89,3 +87,7 @@ genStruct s = intercalate "\n" $ l0:ll
 
 genConnections c p = intercalate "\n" $ map f $ getConnectionIds c
                    where f = \(x, y) -> tikzDraw p [tikzId x ++ " -- " ++ tikzId y]
+
+genTikz (s, c) = intercalate "\n\n" ( defs ++ [tstr, tconn] )
+               where tstr = genStruct s
+                     tconn = genConnections c []
