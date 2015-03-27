@@ -1,9 +1,10 @@
 module Neuro.Create
 ( fromDSL
-, CreationConf
-, newElem
-, newStruct
-, newConnections
+, CreationConf(..)
+, createElem
+, createStruct
+, createLayer
+, createConnections
 ) where
 
 import NamedFunc
@@ -13,27 +14,32 @@ import Data.Map (assocs)
 
 fromDSL :: (Eq a) => DSL.NeuroNet -> CreationConf a -> Network a
 
-newElem :: CreationConf a -> (DSL.Id, DSL.Elem) -> NetworkElem a
+createElem :: CreationConf a -> (DSL.Id, DSL.Elem) -> NetworkElem a
 
---newLayer  :: (Eq a) => CreationConf a -> DSL.IdentifiedLayer -> NetworkLayer a
+createLayer  :: (Eq a) => CreationConf a -> DSL.IdentifiedLayer -> NetworkLayer a
 
-newStruct :: (Eq a) => CreationConf a -> DSL.IdentifiedNeuroNetStruct -> [NetworkLayer a]
+createStruct :: (Eq a) => CreationConf a -> DSL.IdentifiedNeuroNetStruct -> [NetworkLayer a]
 
-newConnections :: CreationConf a -> DSL.HardConnections -> [Synapse]
+createConnections :: CreationConf a -> DSL.HardConnections -> [Synapse]
 
 
-data CreationConf a = CConf { weights  :: DSL.Id -> [a]
+data CreationConf a = CConf { zero     :: a
+                            , weights  :: DSL.Id -> [a]
                             , transfer :: DSL.Id -> NamedFunc ([a] -> a)
                             }
 
 fromDSL (nstruct, conn) conf = Network layouts synapses
-                             where layouts  = newStruct conf nstruct
-                                   synapses = newConnections conf conn
+                             where layouts  = createStruct conf nstruct
+                                   synapses = createConnections conf conn
 
-newElem CConf { weights  = w, transfer = f } (id, DSL.Neuron)    = newNeuron id (w id) (f id)
+createElem CConf { weights  = w, transfer = f } (id, DSL.Neuron)    = newNeuron id (w id) (f id)
+createElem CConf { zero = z                   } (id, DSL.In)        = newInput  id z
+createElem CConf { zero = z                   } (id, DSL.Out)       = newOutput id z
+createElem _                                    (id, DSL.Delayed d) = newDelayedInput id d []
+createElem CConf { zero = z                   } (id, DSL.Delay)     = newDelaySink id z
 
-newLayer conf elMap = newNetworkLayer $ Neuro.newLayer $ map (newElem conf) $ assocs elMap
+createLayer conf elMap = newNetworkLayer $ newLayer $ map (createElem conf) $ assocs elMap
 
-newStruct conf nstruct = map (Neuro.Create.newLayer conf) $ joinNetStruct nstruct
+createStruct conf nstruct = map (createLayer conf) $ joinNetStruct nstruct
 
-newConnections conf (DSL.HardConnections conn) = [Synapse from to | Just (from, to) <- map linkId conn]
+createConnections conf (DSL.HardConnections conn) = [Synapse from to | Just (from, to) <- map linkId conn]

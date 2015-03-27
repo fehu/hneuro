@@ -27,7 +27,7 @@ flatMap f = concatMap (Data.Foldable.toList . f)
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 
-data Elem = Neuron | In | Out | Delayed Int | Delay Int
+data Elem = Neuron | In | Out | Delayed Int | Delay
     deriving (Eq, Show)
 
 data Layer = Layer [Elem] deriving (Eq, Show)
@@ -126,8 +126,8 @@ identifyNeuroNetStruct nnet = ANeuroNetStruct (head l) ((init . tail) l) (last l
                                                   where ll = [ (id, e) | (e, n) <- zip layer [1..]
                                                              , let id = (k, n)
                                                              ]
-isDelay (Delay _) = True
-isDelay _         = False
+isDelay Delay = True
+isDelay _     = False
 
 resolveConnections inet (Connections links) = if all testConn conn
                                               then HardConnections conn

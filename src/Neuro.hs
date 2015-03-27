@@ -4,7 +4,7 @@ module Neuro
 , newNeuron, newInput, newOutput, newDelaySink, newDelayedInput
 ,  isNeuron,  isInput,  isOutput,  isDelaySink,  isDelayedInput
 , Layer
-, isInLayer, isHiddenLayer, isOutLayer
+, isInpLayer, isHiddenLayer, isOutLayer
 , newLayer
 , NetworkLayer
 , newNetworkLayer
@@ -23,19 +23,17 @@ import Data.Set (Set)
 type ElemId = (Int, Int)
 
 data NetworkElem a = Neuron {id :: ElemId, weights :: [a], transfer :: NamedFunc ([a] -> a)}
-                   | Input         ElemId a
-                   | Output        ElemId a
-                   | DelaySink     ElemId a [NetworkElem a]
-                   | DelayedInput  ElemId Int [a]
+                   | Input         ElemId  a
+                   | Output        ElemId  a
+                   | DelaySink     ElemId  a
+                   | DelayedInput  ElemId [a] Int
                    deriving Eq
 
 newNeuron id w f        = Neuron id w f
 newInput id x           = Input id x
 newOutput id x          = Output id x
-newDelayedInput id d xs = DelayedInput id d xs
-newDelaySink id x links = if all isDelayedInput links
-                          then DelaySink id x links
-                          else error "DelaySink may be connected only to DelayedInput"
+newDelayedInput id d xs = DelayedInput id xs d
+newDelaySink id x       = DelaySink id x
 
 isNeuron (Neuron _ _ _)             = True
 isNeuron _                          = False
@@ -49,27 +47,27 @@ isOutput _                          = False
 isDelayedInput (DelayedInput _ _ _) = True
 isDelayedInput _                    = False
 
-isDelaySink (DelaySink _ _ _)       = True
+isDelaySink (DelaySink _ _)         = True
 isDelaySink _                       = False
 
 getId (Neuron id _ _)       = id
 getId (Input id _)          = id
 getId (Output id _)         = id
-getId (DelaySink id _ _)    = id
+getId (DelaySink id _ )     = id
 getId (DelayedInput id _ _) = id
 
 instance Show a => Show (NetworkElem a) where
     show (Neuron id w f)            = "neuron:" ++ show id ++ "(" ++ show w ++ ", " ++ show f ++ ")"
     show (Input id x)               = "in:"     ++ show id ++ "=" ++ show x
     show (Output id x)              = "out:"    ++ show id ++ "=" ++ show x
-    show (DelaySink id x link)      = "delay:"  ++ show id ++ "=" ++ show x ++ "-->" ++ show link
+    show (DelaySink id x)           = "delay:"  ++ show id ++ "=" ++ show x
     show (DelayedInput id d xs)     = "delayed:" ++ show id ++ "=" ++ show xs
 
 instance Eq a => Ord (NetworkElem a) where
     (Neuron id1 _ _)        `compare` (Neuron id2 _ _)       = id1 `compare` id2
     (Input id1 _)           `compare` (Input id2 _)          = id1 `compare` id2
     (Output id1 _)          `compare` (Output id2 _)         = id1 `compare` id2
-    (DelaySink id1 _ _)     `compare` (DelaySink id2 _ _)    = id1 `compare` id2
+    (DelaySink id1 _)       `compare` (DelaySink id2 _)      = id1 `compare` id2
     (DelayedInput id1 _ _)  `compare` (DelayedInput id2 _ _) = id1 `compare` id2
 
 
@@ -82,14 +80,15 @@ instance Eq a => Ord (NetworkElem a) where
 type Layer a = Map ElemId (NetworkElem a)
 
 newLayer :: Eq a => [NetworkElem a] -> Layer a
-newLayer xs = fromList $ map (\x -> (getId x, x)) xs
+newLayer xs = if not $ null xs then fromList $ map (\x -> (getId x, x)) xs
+                               else error "empty new layer"
 
 data NetworkLayer a = InLayer     (Layer a)
                     | HiddenLayer (Layer a)
                     | OutLayer    (Layer a)
 
-isInLayer (InLayer _)           = True
-isInLayer _                     = False
+isInpLayer (InLayer _)          = True
+isInpLayer _                    = False
 
 isHiddenLayer (HiddenLayer _)   = True
 isHiddenLayer _                 = False
@@ -97,15 +96,18 @@ isHiddenLayer _                 = False
 isOutLayer (OutLayer _)         = True
 isOutLayer _                    = False
 
-compatible :: Layer a -> (NetworkElem a -> Bool) -> Bool
-layer `compatible` f = all tstf (elems layer)
-                     where tstf = \k -> foldr (\f a -> f(k) || a) False tst
-                           tst  = [f, isDelayedInput, isDelaySink]
+compatible :: Layer a -> [NetworkElem a -> Bool] -> [NetworkElem a -> Bool] -> Bool
+compatible layer req can = all tstAll (elems layer) && any tst (elems layer)
+                     where tst x    = any ($ x) req
+                           tstAll x = any ($ x) (req ++ can)
+--                     where tstf = \k -> foldr (\f a -> f(k) || a) False tst
+--                           tst  = [f, isDelayedInput, isDelaySink]
 
 newNetworkLayer :: Layer a -> NetworkLayer a
-newNetworkLayer layer | layer `compatible` isInput  = InLayer layer
-                      | layer `compatible` isNeuron = HiddenLayer layer
-                      | layer `compatible` isOutput = OutLayer layer
+newNetworkLayer layer | compatible layer [isInput ] [isDelayedInput             ]    = InLayer layer
+                      | compatible layer [isNeuron,  isDelayedInput, isDelaySink] [] = HiddenLayer layer
+                      | compatible layer [isOutput] [                isDelaySink]    = OutLayer layer
+                      | otherwise                                                    = error "incompatible layer"
 
 layerElems :: NetworkLayer a -> Layer a
 layerElems (InLayer x) = x
@@ -121,14 +123,12 @@ instance Show a => Show (NetworkLayer a) where
 --    fmap f (In elems next) = In (f elems) next
 
 
-
-
-
 --  -- Network Elements Connections
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 
 data Synapse = Synapse { from :: ElemId, to :: ElemId }
+    deriving (Eq, Show)
 
 
 --  -- The Network
@@ -136,6 +136,4 @@ data Synapse = Synapse { from :: ElemId, to :: ElemId }
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 
 data Network a = Network [NetworkLayer a] [Synapse]
-
-
-
+    deriving Show

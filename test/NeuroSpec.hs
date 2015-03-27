@@ -1,14 +1,14 @@
-module NeuroSpec(main, spec)
+module NeuroSpec ( main, spec )
 where
 
-import NamedFunc
 import Test.Hspec
 --import Test.QuickCheck
-import Control.Exception (evaluate)
+--import Control.Exception (evaluate)
 import System.Random
 import Data.List
 import GHC.Float(int2Double)
 
+import NamedFunc
 import Neuro
 
 
@@ -54,14 +54,12 @@ spec = do
 
         describe "DelaySink" $ do
             it "guards a value to be delayed"
-                $ isDelaySink $ newDelaySink nId 0.1 $ [newDelayedInput nId 2 []]
-            it "is linked to a DelayedInput" $ do
-                evaluate (newDelaySink nId 0.1 $ [newInput nId 0]) `shouldThrow` anyException
+                $ isDelaySink $ newDelaySink nId 0.1
 
     describe "NetworkLayer" $ do
         describe "InLayer" $ do
             it "can be build only of input and delay elements"
-                $ (newNetworkLayer . newLayer $ take 5 ilist) `shouldSatisfy` isInLayer    -- TODO ++ take 3 dilist
+                $ (newNetworkLayer . newLayer $ take 5 ilist) `shouldSatisfy` isInpLayer    -- TODO ++ take 3 dilist
 
         describe "HiddenLayer" $ do
             it "can de build only of neurons and delays"

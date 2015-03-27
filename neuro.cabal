@@ -5,30 +5,31 @@ build-type: Simple
 license: MIT
 license-file: LICENSE.md
 data-dir: ""
- 
+
 library
-    build-depends: base -any, containers -any, random -any, text -any,
-                   text-format -any
-    exposed-modules: NamedFunc Neuro
+    build-depends: base, containers, random, text, text-format
+    exposed-modules: NamedFunc
+                     Neuro
+                     Neuro.DSL
+                     Neuro.Create
     exposed: True
     buildable: True
     hs-source-dirs: src
-    other-modules: Neuro.Create Neuro.DSL Neuro.GenTikz Neuro.DSL
+    other-modules: Neuro.GenTikz
                    Neuro.Run
- 
+
 executable neuro-run
-    build-depends: base -any, containers -any, random -any, text -any,
-                   text-format -any
+    build-depends: base, containers, random, text, text-format
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
-    other-modules: Neuro.Create Neuro.GenTikz Neuro.DSL Neuro.Run
- 
+--    other-modules: Neuro.Create Neuro.GenTikz Neuro.DSL Neuro.Run
+
 test-suite neuro-spec
-    build-depends: hspec ==2.*, neuro -any, base -any, containers -any,
-                   random -any
+    build-depends: hspec ==2.*, QuickCheck,
+                   neuro, base, containers, random
     type: exitcode-stdio-1.0
     main-is: Spec.hs
     buildable: True
     hs-source-dirs: test
- 
+
