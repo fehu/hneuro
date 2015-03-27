@@ -33,6 +33,7 @@ mean x = sum x / (int2Double . length $ x)
 
 hlist j = [newNeuron (j, i)
                      (doubleRandList 5)
+                     (named (*) "*")
                      (named mean "mean")
           | i <- [1..]]
 
@@ -41,7 +42,7 @@ spec = do
     describe "Neuro.NetworkElem" $ do
         describe "Neuron" $ do
             it "is defined by sinaptic weights and transfer function" $ do
-                isNeuron $ newNeuron nId [1..4] (head `named` "head")
+                isNeuron $ newNeuron nId [1..4] (named (*) "*") (head `named` "head")
 
         describe "Input" $ do
             it "contains input value for current iteration"  $ isInput $ newInput nId 4.0

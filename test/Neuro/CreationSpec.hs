@@ -12,7 +12,7 @@ import Data.List (intersperse)
 
 import NamedFunc
 
-import Neuro
+import Neuro hiding (Neuron)
 import Neuro.DSL
 import Neuro.Create
 
@@ -104,8 +104,8 @@ testLayer c1 c2 tst f =
 anId = (1, 1)
 
 cnf = CConf { zero = 0
-            , weights = \_ -> [1, 2]
-            , transfer = \_ -> (head `named` "head")
+            , w = \_ -> [1, 2]
+            , tf = \_ -> ((\x -> sin $ sum x) `named` "sin x")
             }
 
 genElems el l b n = [ ((l, i), el) | i <- [(b+1)..(b+n)] ]

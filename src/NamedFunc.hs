@@ -1,11 +1,20 @@
-module NamedFunc( NamedFunc, named )
-where
+module NamedFunc
+( NamedFunc
+, named
+, name
+, napply
+) where
 
-data NamedFunc f = NamedFunc String f
+data NamedFunc  a b   = NamedFunc  String (a -> b)
 
-named :: f -> String -> NamedFunc f
-f `named` s = NamedFunc s f
+named :: (a -> b) -> String -> NamedFunc a b
+name  :: NamedFunc a b -> String
+napply  :: NamedFunc a b -> a -> b
 
-instance Show (NamedFunc f) where show (NamedFunc n _) = n
+x `named` n = NamedFunc n x
+name (NamedFunc n _) = n
+napply  (NamedFunc _ f) = f
 
-instance Eq (NamedFunc f)   where (NamedFunc n1 _) == (NamedFunc n2 _) = n1 == n2
+instance Show (NamedFunc a b)    where show (NamedFunc n _) = n
+
+instance Eq   (NamedFunc a b)    where (NamedFunc n1 _) == (NamedFunc n2 _) = n1 == n2

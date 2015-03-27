@@ -3,7 +3,7 @@ module Main
 where
 
 import NamedFunc
-import Neuro
+--import Neuro
 import Neuro.DSL as DSL
 import Neuro.GenTikz
 import Neuro.Create
@@ -38,19 +38,19 @@ nnet = (istruct, rconnections)
 
 ------------------- Creation Tst -------------------
 
-cnf = CConf { zero = 0
-            , weights = \_ -> [1, 2]
-            , transfer = \_ -> (head `named` "head")
-            }
-
-crElem = [ createElem cnf ((1,1), DSL.Neuron)
-         , createElem cnf ((1,2), DSL.In)
-         , createElem cnf ((1,3), DSL.Out)
-         , createElem cnf ((1,4), DSL.Delayed 1)
-         , createElem cnf ((1,5), DSL.Delay)
-         ]
-
-crTest = putStrLn $ show crElem
+--cnf = CConf { zero = 0
+--            , w = \_ -> [1, 2]
+--            , tf = \_ -> ((\x -> 1 / sum x ) `named` "1/x")
+--            }
+--
+--crElem = [ createElem cnf ((1,1), DSL.Neuron)
+--         , createElem cnf ((1,2), DSL.In)
+--         , createElem cnf ((1,3), DSL.Out)
+--         , createElem cnf ((1,4), DSL.Delayed 1)
+--         , createElem cnf ((1,5), DSL.Delay)
+--         ]
+--
+--crTest = putStrLn $ show crElem
 
 ------------------- Tikz Tst -------------------
 
