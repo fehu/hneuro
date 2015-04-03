@@ -1,5 +1,5 @@
 name: neuro
-version: 0.0.0
+version: 0.0.1
 cabal-version: >=1.8
 build-type: Simple
 license: MIT
@@ -15,8 +15,7 @@ library
     exposed: True
     buildable: True
     hs-source-dirs: src
-    other-modules: Neuro.GenTikz
-                   Neuro.Run
+    other-modules: Neuro.Run Neuro.GenTikz
 
 executable neuro-run
     build-depends: base, containers, random, text, text-format

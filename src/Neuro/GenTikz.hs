@@ -15,16 +15,16 @@ import Data.Map(keys)
 
 import Neuro.DSL
 
-genTikz :: NeuroNet -> String -- TODO ?String?
+genTikz :: DSLResolved -> String -- TODO ?String?
 
 a ~> b = (a, b)
 
 type TikzParams = [TikzParam]
 type TikzParam = (String, String)
 
-genLayer  :: Int -> IdentifiedLayer -> TikzParams -> (Int -> TikzParams) -> String
-genStruct :: IdentifiedNeuroNetStruct -> String
-genConnections :: HardConnections -> TikzParams -> String
+genLayer  :: Int -> DSLLayer -> TikzParams -> (Int -> TikzParams) -> String
+genStruct :: [DSLLayer] -> String
+genConnections :: [DSLConnection] -> TikzParams -> String
 
 -- -- TikZ
 tikzBegin x = "\\begin{" ++ x ++ "}"
@@ -61,7 +61,7 @@ genLayerDefaultNodeParams n  = [ "on chain" ~> show n
                                ]
 
 genLayer i l p np = tikzScope "scope" body mp
-                  where ids = keys l
+                  where ids = keys $ iElems l
                         n  = length ids
                         body = intercalate "\n" $
                                [tikzNode id t $ mnp c | (a, c) <- zip ids [1..]
@@ -71,23 +71,22 @@ genLayer i l p np = tikzScope "scope" body mp
                         mnp j = genLayerDefaultNodeParams i ++ np j
 
 genStructInner []     _ _  _ _  = []
-genStructInner (i:xs) p np s ln = tl:(genStructInner xs p np s h)
-                              where l  = getILayer i s
-                                    tl = genLayer i l p $ np ln
-                                    h  = head $ keys l
+genStructInner (i:xs) p np ls ln = tl:(genStructInner xs p np ls h)
+                               where l  = ls !! i
+                                     tl = genLayer i l p $ np ln
+                                     h  = head $ keys $ iElems l
 
-genStruct s = intercalate "\n" $ l0:ll
-            where l0 = genLayer 0 (getILayer 0 s) [nodeDistMm 2] (\_ -> [])
-                  ll = genStructInner [1..n-1] p np s firstElemId
-                     where j = joinNetStruct s
-                           n = length j
-                           p = [nodeDistMm 2]
-                           np ln 1 = ["right" ~> ("1cm of " ++ showId ln)]
-                           np  _ _ = []
+genStruct ls = intercalate "\n" $ l0:ll
+             where l0 = genLayer 0 (ls !! 0) [nodeDistMm 2] (\_ -> [])
+                   ll = genStructInner [1..n-1] p np ls firstElemId
+                      where n = length ls
+                            p = [nodeDistMm 2]
+                            np ln 1 = ["right" ~> ("1cm of " ++ showId ln)]
+                            np  _ _ = []
 
-genConnections c p = intercalate "\n" $ map f $ getConnectionIds c
-                   where f = \(x, y) -> tikzDraw p [tikzId x ++ " -- " ++ tikzId y]
+genConnections cs p = intercalate "\n" $ map f cs
+                    where f = \c -> tikzDraw p [(tikzId $ from c) ++ " -- " ++ (tikzId $ to c)]
 
-genTikz (s, c) = intercalate "\n\n" ( defs ++ [tstr, tconn] )
-               where tstr = genStruct s
-                     tconn = genConnections c []
+genTikz dsl = intercalate "\n\n" ( defs ++ [tstr, tconn] )
+               where tstr = genStruct $ layers dsl
+                     tconn = genConnections (connections dsl) []

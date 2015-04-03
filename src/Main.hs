@@ -14,27 +14,27 @@ main = tikzTest
 
 ------------------- DSL Tst -------------------
 
-ilayer = Layer [In, Delayed 1, In, Delayed 2, In]
-layer1 = Layer [Neuron, Neuron, Neuron, Delayed 3]
-layer2 = Layer $ replicate 10 Neuron
-ulayer = Layer (replicate 2 Out ++ [Delay, Delay])
+--connections = (all2all' 0 1 [] [2])
+----          +:+ (all2all' 1 2 [] [1, 2, 9, 10])
+--          +:+ (Connections [
+--                    (1 `sel` 1)         --> (2 `sel` 1)
+--                  , (1 `sel` 2)         --> (2 `sel'` [1..5])
+--                  , (2 `sel'` [1..4])   --> (3 `sel'` [1, 3])
+--                  , (2 `sel'` [5..8])   --> (3 `sel'` [2, 4])
+--                ])
 
-struct = neuroNetStructure ilayer [layer1, layer2] ulayer
-istruct = identifyNeuroNetStruct struct
 
-all2all' = all2all istruct
-
-connections = (all2all' 0 1 [] [2])
---          +:+ (all2all' 1 2 [] [1, 2, 9, 10])
-          +:+ (Connections [
-                    (1 `sel` 1)         --> (2 `sel` 1)
-                  , (1 `sel` 2)         --> (2 `sel'` [1..5])
-                  , (2 `sel'` [1..4])   --> (3 `sel'` [1, 3])
-                  , (2 `sel'` [5..8])   --> (3 `sel'` [2, 4])
-                ])
-rconnections = resolveConnections istruct connections
-
-nnet = (istruct, rconnections)
+nnet = dsl $ NeuroNet $ Layer [In, Delayed 1, In, Delayed 2, In]
+                      : Layer [Neuron, Neuron, Neuron, Delayed 3]
+                      : Layer (replicate 10 Neuron)
+                      : Layer (replicate 4 Out)
+                      : all2all 0 1 [] [2]
+--                      : all2all' 1 2 [] [1, 2, 9, 10]
+                      : [ (1 `sel` 1)         --> (2 `sel` 1)
+                        , (1 `sel` 2)         --> (2 `sel'` [1..5])
+                        , (2 `sel'` [1..4])   --> (3 `sel'` [1, 3])
+                        , (2 `sel'` [5..8])   --> (3 `sel'` [2, 4])
+                        ]
 
 ------------------- Creation Tst -------------------
 
@@ -59,7 +59,7 @@ writeTst txt = writeFile "test.tikz" txt
 
 tikzTest :: IO ()
 tikzTest = do
-    let tikzNet = genTikz (istruct, rconnections)
+    let tikzNet = genTikz nnet
     let tikz    = tikzScope "tikzpicture" tikzNet []
     writeTst tikz
 

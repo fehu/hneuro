@@ -53,9 +53,9 @@ spec = do
         describe "DelayedInput" $ do
             it "introduces values, delayed by `DelaySink`"   $ isDelayedInput $ newDelayedInput nId 2 []
 
-        describe "DelaySink" $ do
-            it "guards a value to be delayed"
-                $ isDelaySink $ newDelaySink nId 0.1
+--        describe "DelaySink" $ do
+--            it "guards a value to be delayed"
+--                $ isDelaySink $ newDelaySink nId 0.1
 
     describe "NetworkLayer" $ do
         describe "InLayer" $ do

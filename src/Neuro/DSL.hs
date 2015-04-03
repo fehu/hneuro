@@ -1,146 +1,122 @@
 module Neuro.DSL
-( Elem(..)
-, Layer(..)
-, Connections(..)
-, (+:+)
-, Id, LastId, IdentifiedLayer
-, getILayer, joinNetStruct
-, ElemSel
-, sel, sel'
-, Link
-, (-->), all2all
-, linkId
-, HardConnections(..)
-, getConnections, getConnectionIds
-, ANeuroNetStruct(..), NeuroNetStruct, IdentifiedNeuroNetStruct
-, neuroNetStructure, identifyNeuroNetStruct
-, resolveConnections
-, NeuroNet
+( dsl
+, Id, Delay, LinkDirection
+, DSLResolved   (layers, connections)
+, DSLLayer      (DSLLayer, iElems)
+, DSLConnection (from, to, dir)
+
+, DSLRaw        (NeuroNet)
+, DSLFragment   (Layer)
+
+, Elem (Neuron, In, Out, Delayed)
+, ElemSel ()
+, sel, sel', except
+, (-->), (<--), all2all
 ) where
 
-import Data.Map (Map, fromList, assocs)
-import Data.Foldable (toList)
+import Data.Map ( Map, member, fromList, size )
+import Data.List ( partition )
 
-flatMap f = concatMap (Data.Foldable.toList . f)
+--import Data.Foldable (toList)
+--flatMap f = concatMap (Data.Foldable.toList . f)
 
 --  -- DSL Elements
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 
-data Elem = Neuron | In | Out | Delayed Int | Delay
+data DSLFragment = Layer [Elem]
+                 | Link ElemSel ElemSel LinkDirection
+                 deriving (Eq, Show)
+
+data DSLRaw = NeuroNet [DSLFragment]
+
+data DSLLayer = DSLLayer { iElems :: Map Id Elem }
+data DSLConnection = DSLConnection { from :: Id
+                                   , to :: Id
+                                   , dir :: LinkDirection
+                                   }
+data DSLResolved = DSLRes { layers :: [DSLLayer]
+                          , connections :: [DSLConnection]
+                          }
+
+data Elem = Neuron | In | Out | Delayed Delay
     deriving (Eq, Show)
 
-data Layer = Layer [Elem] deriving (Eq, Show)
-
-data Connections = Connections [Link] deriving Show
-(+:+) :: Connections -> Connections -> Connections
-
-data ElemSel = Sel {layer :: Int, i :: [Int]}
-             deriving (Eq, Show)
-
-sel  :: Int -> Int   -> ElemSel
-sel' :: Int -> [Int] -> ElemSel
+type Delay = Int
 
 type Id = (Int, Int)
-type LastId = Id
 
-data Link = HardLink (Id, Elem) (Id, Elem)
-          | WeakLink ElemSel ElemSel
-          deriving (Eq, Show)
+data ElemSel = Sel       {layer :: Int, i      :: [Int]}
+             | SelExcept {layer :: Int, selExcept :: [Int]}
+             deriving (Eq, Show)
 
-(-->)   :: ElemSel -> ElemSel -> Link
-all2all :: IdentifiedNeuroNetStruct -> Int       -> Int     -> [Int]      -> [Int] -> Connections
+data LinkDirection = Forward | BackOrSame
+                   deriving (Eq, Show)
 
-linkId  :: Link -> Maybe (Id, Id)
+sel     :: Int -> Int   -> ElemSel
+sel'    :: Int -> [Int] -> ElemSel
+except  :: Int -> [Int] -> ElemSel
 
-type IdentifiedLayer = Map Id Elem
-getILayer :: Int -> IdentifiedNeuroNetStruct -> IdentifiedLayer
+(-->)   :: ElemSel -> ElemSel -> DSLFragment
+(<--)   :: ElemSel -> ElemSel -> DSLFragment
+all2all :: Int -> Int -> [Int] -> [Int] -> DSLFragment
 
+dsl     :: DSLRaw -> DSLResolved
 
-data ANeuroNetStruct a = ANeuroNetStruct { inputs :: a
-                                         , hidden :: [a]
-                                         , outputs :: a
-                       } deriving Show
-
-joinNetStruct :: ANeuroNetStruct a -> [a]
-
-type NeuroNetStruct = ANeuroNetStruct Layer
-
-neuroNetStructure :: Layer -> [Layer] -> Layer -> NeuroNetStruct
-
-type IdentifiedNeuroNetStruct = ANeuroNetStruct IdentifiedLayer
-identifyNeuroNetStruct :: NeuroNetStruct -> IdentifiedNeuroNetStruct
-
-data HardConnections = HardConnections [Link]
-getConnections   :: HardConnections -> [((Id, Elem), (Id, Elem))]
-getConnectionIds :: HardConnections -> [(Id, Id)]
-
-resolveConnections :: IdentifiedNeuroNetStruct ->  Connections -> HardConnections
-
-type NeuroNet = (IdentifiedNeuroNetStruct, HardConnections)
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --
 
 
---  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
---  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+l `sel` n     = Sel l [n]
+l `sel'` ns   = Sel l ns
+l `except` ns = SelExcept l ns
 
-shiftOneIndexing i = i - 1
+determineDir from to = if layer from < layer to then Forward else BackOrSame
 
-getLayer (Layer xs) = xs
+from --> to = if layer from < layer to then Link from to Forward
+                                             else error "back-going link"
 
-getILayer 0 (ANeuroNetStruct inp _ _)   = inp
-getILayer i (ANeuroNetStruct _ hid out) = if i <= length hid
-                                          then hid !! (shiftOneIndexing i)
-                                          else if i == 1 + length hid
-                                               then out
-                                          else error "out of range"
+to <-- from = if layer from > layer to then Link from to BackOrSame
+                                             else error "forward-going link"
 
-getConnections (HardConnections l) = map f l
-                                   where f x = case x of (HardLink from to) -> (from, to)
+all2all lFrom lTo exFrom exTo = Link from to dir
+                              where from = lFrom `except` exFrom
+                                    to   = lTo `except` exTo
+                                    dir  = determineDir from to
 
-getConnectionIds c = map (\((i1,_), (i2,_)) -> (i1, i2)) $ getConnections c
 
-(Connections c1) +:+ (Connections c2) = Connections (c1 ++ c2)
+isLayer (Layer _) = True
+isLayer _         = False
 
-l `sel`  i  = Sel l [i]
-l `sel'` is = Sel l is
+listSel :: [DSLLayer] -> ElemSel -> [Id]
+listSel layers (Sel l ns) = if all (\i -> member i $ iElems $ layers !! l) ids
+                            then ids
+                            else error ("one of " ++ show ids ++ " links to nonexistent element " ++ (show $ map iElems layers))
+                          where ids = [(l, i) | i <- ns]
 
-from --> to = WeakLink from to
+listSel layers (SelExcept l ns) = [ (l, i) | i <- filter (\x -> notElem x ns) [1.. size $ iElems $ layers !! l] ]
 
-all2all inet from to exceptFrom exceptTo = Connections [HardLink a b | a <- fFrom, b <- fTo]
-                                         where fFrom = fb exceptFrom $ assocs $ getILayer from inet
-                                               fTo   = fb exceptTo   $ assocs $ getILayer to inet
-                                               ff e  = \(_,x) -> not $ x `elem` e
-                                               fb e l = map fst $ filter (ff e) $ zip l [1..]
 
-linkId link = case link of (HardLink (from, _) (to, _)) -> Just (from, to)
-                           _                            -> Nothing
+dsl (NeuroNet raw) = DSLRes layers $ foldr (++) [] conns
+        where dparts = partition isLayer raw
+              layers = map mkLayer $ zip (fst dparts) [0..]
+              conns  = map mkConns (snd dparts)
+              mkLayer (x, l) = case x of Layer xs    -> DSLLayer $ fromList $ map (\(e,i) -> ((l, i), e)) $ zip xs [1..]
+              mkConns x = case x of Link from to dir -> [DSLConnection f t dir | f <- listSel layers from, t <- listSel layers to]
 
-joinNetStruct (ANeuroNetStruct i h o) = [i] ++ h ++ [o] -- reverse $
+                --          -- --          -- --          -- --          -- --          -- --          --
+                --          -- --          -- --          -- --          -- --          -- --          --
+                --          -- --          -- --          -- --          -- --          -- --          --
 
-neuroNetStructure inp hid out = ANeuroNetStruct inp hid out
+tst = dsl $ NeuroNet $ Layer (replicate 5 In ++ [Delayed i | i <- [1..2]])
+                     : Layer (replicate 10 Neuron)
+                     : Layer (replicate 10 Neuron)
+                     : Layer (replicate 3 Out)
+                     : all2all 1 2 [] []
+                     : all2all 3 4 [1, 10] []
+                     : [ (2 `sel'` [1..10])   --> (4 `sel` 1)
+                       , (2 `except` [5])     --> (3 `sel'` [1..10])
+                       , (1 `sel` 6)          <-- (3 `sel` 1)
+                       , (1 `sel` 7)          <-- (3 `sel` 2)
+                       ]
 
-identifyNeuroNetStruct nnet = ANeuroNetStruct (head l) ((init . tail) l) (last l)
-                        where j = map getLayer $ joinNetStruct nnet
-                              l = map identify $ zip j [0..]
-                              identify (layer, k) = fromList ll
-                                                  where ll = [ (id, e) | (e, n) <- zip layer [1..]
-                                                             , let id = (k, n)
-                                                             ]
-isDelay Delay = True
-isDelay _     = False
-
-resolveConnections inet (Connections links) = if all testConn conn
-                                              then HardConnections conn
-                                              else error "back referencing non-delay synapses present"
-                               where f link = case link of h@(HardLink _ _) -> [h]
-                                                           w@(WeakLink _ _) -> convertWeak inet w
-                                     conn   = flatMap f links
-                                     testConn (HardLink (from, e) (to, _)) = isDelay e || to > from
-
-hsel inet l n = (assocs $ getILayer l inet) !! shiftOneIndexing n
-
-convertWeak inet (WeakLink (Sel fromL fromN) (Sel toL toN)) =
-    [ HardLink (hsel inet fromL from) (hsel inet toL to) | from <- fromN, to <- toN ]
-
-    --          -- --          -- --          -- --          -- --          -- --          --
-    --          -- --          -- --          -- --          -- --          -- --          --

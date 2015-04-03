@@ -29,27 +29,23 @@ spec = do
 
         it "creates outputs"        $ ( createElem cnf (anId, Out) )       `shouldSatisfy` isOutput
 
-        it "creates delays"         $ ( createElem cnf (anId, Delay) )     `shouldSatisfy` isDelaySink
-
         it "creates delayed inputs" $ ( createElem cnf (anId, Delayed 1) ) `shouldSatisfy` isDelayedInput
 
     describe "Layers Creation using DSL" $ do
 
-        prop "creates input layers of inputs and delayed inputs" $ do
+        prop "creates input layers from inputs and delayed inputs" $ do
             let f a b = mkLayer $ (genElems In          0 0 a) ++
                                   (genElems (Delayed 1) 0 a b)
             \(a, b) -> testLayer (a>0) (b>0) isInpLayer (f a b)
 
-        prop "creates Hidden layers of neurons, delays and delayed inputs" $ do
-            let f a b c = mkLayer $ (genElems Neuron      1 0       a) ++
-                                    (genElems Delay       1 a       b) ++
-                                    (genElems (Delayed 1) 1 (a+b)   c)
-            \(a, b, c) -> testLayer (any (>0) [a, b, c]) False isHiddenLayer $ f a b c
+        prop "creates Hidden layers from neurons and delayed inputs" $ do
+            let f a b = mkLayer $ (genElems Neuron      1 0 a) ++
+                                  (genElems (Delayed 1) 1 a b) -- won't work?
+            \(a, b) -> testLayer (any (>0) [a, b]) False isHiddenLayer $ f a b
 
-        prop "creates Hidden layers of neurons, delays and delayed inputs" $ do
-            let f a b = mkLayer $ (genElems Out     0 0 a) ++
-                                  (genElems (Delay) 0 a b)
-            \(a, b) -> testLayer (a>0) (b>0) isOutLayer (f a b)
+        prop "creates Output layers from outputs" $ do
+            let f a = mkLayer $ (genElems Out 0 0 a)
+            \a -> testLayer (a>0) False isOutLayer $ f a
 
         prop "won't create if has any layer mixed of input, neuron and output" $ do
             let f a b c = mkLayer $ (genElems Neuron      1 0         a) ++
@@ -72,21 +68,21 @@ spec = do
         let inp  = Layer $ [In | _ <- [1..4]]     ++ [Delayed 1, Delayed 2]
         let hid1 = Layer $ [Delayed 2, Delayed 1] ++ [Neuron | _ <- [1..6]]
         let hid2 = Layer $ [Neuron | _ <- [1..6]]
-        let out  = Layer $ intersperse Delay [Out | _ <- [1..5]]
-        let istruct = identifyNeuroNetStruct $ neuroNetStructure inp [hid1, hid2] out
+        let out  = Layer $ [Out | _ <- [1..5]]
+        let ls = [inp, hid1, hid2, out]
 
-        let connections = (all2all istruct 0 1 [] [2])
-                        +:+ (Connections [
-                                    (1 `sel` 1)         --> (2 `sel` 1)
-                                  , (1 `sel` 2)         --> (2 `sel'` [1..5])
-                                  , (2 `sel'` [1..3])   --> (3 `sel'` [1, 3])
-                                  , (2 `sel'` [4..6])   --> (3 `sel'` [2, 4])
-                                ])
-        let conn = resolveConnections istruct connections
-        let nnet = (istruct, conn)
+        let conns = all2all 0 1 [] [2]
+                   :[ (1 `sel` 1)         --> (2 `sel` 1)
+                    , (1 `sel` 2)         --> (2 `sel'` [1..5])
+                    , (2 `sel'` [1..3])   --> (3 `sel'` [1, 3])
+                    , (2 `sel'` [4..6])   --> (3 `sel'` [2, 4])
+                    ]
+        let nnet = dsl $ NeuroNet $ ls ++ conns
 
-        it "creates structure"   $ createStruct cnf istruct `shouldSatisfy` not . null
-        it "creates connections" $ createConnections cnf conn `shouldSatisfy` not . null
+        let struct = createStruct cnf (layers nnet)
+        it "creates structure"   $ struct `shouldSatisfy` not . null
+        it "creates connections" $ createConnections cnf (map layerElems struct)  (connections nnet) `shouldSatisfy` not . null
+
         it "creates network"     $ fromDSL nnet cnf `shouldSatisfy` netNotNull
 
 orderComb :: [a] -> [[a]]
@@ -105,11 +101,12 @@ anId = (1, 1)
 
 cnf = CConf { zero = 0
             , w = \_ -> [1, 2]
-            , tf = \_ -> ((\x -> sin $ sum x) `named` "sin x")
+            , wf = \_ -> named (*) "*"
+            , tf = \_ -> named (sin . sum) "sin"
             }
 
 genElems el l b n = [ ((l, i), el) | i <- [(b+1)..(b+n)] ]
 
-mkLayer l = createLayer cnf $ fromList l
+mkLayer l = createLayer cnf $ DSLLayer $ fromList l
 
 netNotNull (Network l c) = (not $ null l) && (not $ null c)

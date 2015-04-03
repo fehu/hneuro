@@ -3,12 +3,30 @@ module Neuro.Run
 
 ) where
 
-import Data.Map ( Map, (!), insert, elems, fromList, empty, filterWithKey )
+import Data.Map ( Map, (!), assocs, empty, elems, filter, filterWithKey, fromList
+                , insert,  keysSet, size, toList,  union, unionWith )
 --import Data.Map hiding ( map )
 
 import NamedFunc
 
 import Neuro
+
+ensuring cond err a = if cond then a
+                              else error err
+
+tupled :: (a -> b -> c) -> (a, b) -> c
+tupled f (x, y) = f x y
+
+type MapLike k a = [(k, a)]
+
+zipByKey :: (Eq k, Ord k) => Map k a -> Map k b -> MapLike k (a, b)
+zipByKey m1 m2 = ensuring (keysSet m1 == keysSet m2) "Maps have different keys" $
+                    map (\(k, v1) -> (k, (v1, m2 ! k))) $ assocs m1
+
+--mapValues :: (a -> b) -> Map k a -> Map k b
+--mapValues f m = Data.Map.map f m
+
+-- unionWith (\(a, b) -> ) m1 m2
 
 --      walk layer by layer -->
 --                               calc layer outputs using previous layers
@@ -19,11 +37,11 @@ import Neuro
 --                              gather layers back
 
 
-data NetworkState a  = NS [Layer a]
+type NetworkState a  = [Layer a]
 
-type NetworkInput a = [a]
+type NetworkInput a = Map ElemId a
 
---nnetIter :: Num a => SynapsesCache -> NetworkInput a -> NetworkState a -> ExecutionAccumulator a
+--nnetIter :: (Num a, Show a) => SynapsesCache -> NetworkInput a -> NetworkState a -> ExecutionAccumulator a TODO
 --                                                     -> (NetworkState a, ExecutionAccumulator a)
 
 
@@ -33,8 +51,8 @@ processElem  :: SynapsesCache -> ExecutionAccumulator a -> NetworkElem a -> Exec
 processLayer :: SynapsesCache -> ExecutionAccumulator a -> Layer a -> ExecutionAccumulator a
 
 
-
-
+setInput :: NetworkElem a -> a -> NetworkElem a
+setInput i v = updateInput i (\_ -> v)
 
 
 
@@ -50,12 +68,21 @@ processLayer syns acc layer = foldr (\x a -> processElem syns a x) acc $ elems l
 
 nnetIterInner :: Num a => (SynapsesCache, NetworkState a, ExecutionAccumulator a)
                         -> (NetworkState a, ExecutionAccumulator a)
-nnetIterInner (syns, NS(x:[]), acc) = (NS [x], processLayer syns acc x)
-nnetIterInner (syns, NS(x:xs), acc) = case rec of (NS rxs, racc) -> (NS (x:rxs), racc)
-                              where rec = nnetIterInner (syns, (NS xs), (processLayer syns acc x))
+nnetIterInner (syns, (x:[]), acc) = ([x], processLayer syns acc x)
+nnetIterInner (syns, (x:xs), acc) = case rec of (rxs, racc) -> (x:rxs, racc)
+                              where rec = nnetIterInner (syns, xs, (processLayer syns acc x))
 
---nnetIter syns inp st acc = nnetIterInner (syns, st, newAcc)
---                         where newAcc = filterWithKey (\k _ -> isOutput $ get k) acc
+--nnetIter syns inp st@(x:xs) acc = nnetIterInner (syns, st, fromAcc) -- union fromAcc inpAcc TODO
+--                                where f = \k _ -> idType k == NetO
+--                                      fromAcc = filterWithKey f acc -- TODO
+--
+--                                      inpAcc  = if size inputs == size inp
+--                                                then map (\(k, (e, v)) -> (k, setInput e v)) $
+--                                                    zipByKey inputs inp
+----                                                then mapValues (\(a, b) -> setInput a b) $ zipByKey inputs inp -- tupled
+--                                                else error ("input of wrong size " ++ show inp)
+----                                      fset (e, v) =
+--                                      inputs  = Data.Map.filter isInput x -- map snd $ toList $
 
 
 --firstNnetIter syns st = nnetIter syns st
