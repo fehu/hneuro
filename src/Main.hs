@@ -14,27 +14,25 @@ main = tikzTest
 
 ------------------- DSL Tst -------------------
 
---connections = (all2all' 0 1 [] [2])
-----          +:+ (all2all' 1 2 [] [1, 2, 9, 10])
---          +:+ (Connections [
---                    (1 `sel` 1)         --> (2 `sel` 1)
---                  , (1 `sel` 2)         --> (2 `sel'` [1..5])
---                  , (2 `sel'` [1..4])   --> (3 `sel'` [1, 3])
---                  , (2 `sel'` [5..8])   --> (3 `sel'` [2, 4])
---                ])
+--nnet = dsl $ NeuroNet $ Layer [In, Delayed 1, In, Delayed 2, In]
+--                      : Layer [Neuron, Neuron, Neuron, Delayed 3]
+--                      : Layer (replicate 10 Neuron)
+--                      : Layer (replicate 4 Out)
+--                      : all2all 0 1 [] [2]
+----                      : all2all' 1 2 [] [1, 2, 9, 10]
+--                      : [ (1 `sel` 1)         --> (2 `sel` 1)
+--                        , (1 `sel` 2)         --> (2 `sel'` [1..5])
+--                        , (2 `sel'` [1..4])   --> (3 `sel'` [1, 3])
+--                        , (2 `sel'` [5..8])   --> (3 `sel'` [2, 4])
+--                        ]
 
+nnet = dsl $ NeuroNet  $ Layer [In, In]
+                       : Layer (replicate 2 Neuron)
+                       : Layer (replicate 1 Out)
+                       : all2all 0 1 [] []
+                       : all2all 1 2 [] []
+                       : []
 
-nnet = dsl $ NeuroNet $ Layer [In, Delayed 1, In, Delayed 2, In]
-                      : Layer [Neuron, Neuron, Neuron, Delayed 3]
-                      : Layer (replicate 10 Neuron)
-                      : Layer (replicate 4 Out)
-                      : all2all 0 1 [] [2]
---                      : all2all' 1 2 [] [1, 2, 9, 10]
-                      : [ (1 `sel` 1)         --> (2 `sel` 1)
-                        , (1 `sel` 2)         --> (2 `sel'` [1..5])
-                        , (2 `sel'` [1..4])   --> (3 `sel'` [1, 3])
-                        , (2 `sel'` [5..8])   --> (3 `sel'` [2, 4])
-                        ]
 
 ------------------- Creation Tst -------------------
 

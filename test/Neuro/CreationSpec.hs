@@ -11,8 +11,7 @@ import Data.Map (fromList)
 import Data.List (intersperse)
 
 import NamedFunc
-
-import Neuro hiding (Neuron)
+import Neuro hiding (Neuron, layers)
 import Neuro.DSL
 import Neuro.Create
 
@@ -99,11 +98,11 @@ testLayer c1 c2 tst f =
 
 anId = (1, 1)
 
-cnf = CConf { zero = 0
-            , w = \_ -> [1, 2]
-            , wf = \_ -> named (*) "*"
-            , tf = \_ -> named (sin . sum) "sin"
-            }
+cnf = CConf { zero = 0         -- TODO
+             , w = \_ -> [1, 2]
+             , wf = \_ -> named (*) "*"
+             , tf = \_ -> named (sin . sum) "sin"
+             }
 
 genElems el l b n = [ ((l, i), el) | i <- [(b+1)..(b+n)] ]
 

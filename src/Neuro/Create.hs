@@ -30,7 +30,7 @@ data CreationConf a = CConf { zero  :: a
                             }
 
 fromDSL dsl conf = Network layouts synapses
-                 where layouts  = createStruct conf $ layers dsl
+                 where layouts  = createStruct conf $ DSL.layers dsl
                        synapses = createConnections conf (map layerElems layouts) $ connections dsl
 
 createElem CConf { w  = w,

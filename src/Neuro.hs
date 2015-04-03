@@ -1,6 +1,6 @@
 module Neuro
 ( NetworkElem
-, ElemId
+, ElemId(..)
 , idLayer, idPos, idPair
 , idFromPair
 , getId
@@ -17,13 +17,14 @@ module Neuro
 , newNetworkLayer
 , Synapse
 , newSynapse
-, Synapses, SynapsesCache
+, Synapses
+, SynapsesCache ( backloops )
 , mkSynapsesCache, getFrom, getTo
 , Network(..)
 ) where
 
 import NamedFunc
-import Data.Map (Map, keys, elems, fromList, (!), fromListWith)
+import Data.Map (Map, keys, elems, fromList, (!), fromListWith, filterWithKey, mapWithKey)
 import Data.Set (Set)
 
 --  -- Network Elements
@@ -161,12 +162,13 @@ data Synapse a = Synapse { from :: NetworkElem a, to :: NetworkElem a }
 newSynapse :: NetworkElem a -> NetworkElem a -> Synapse a
 
 type Synapses a = [Synapse a]
-data SynapsesCache = SynapsesCache { fromMap :: (Map ElemId [ElemId])
-                                   , toMap   :: (Map ElemId [ElemId]) }
+data SynapsesCache = SynapsesCache { fromMap   :: Map ElemId [ElemId]
+                                   , toMap     :: Map ElemId [ElemId]
+                                   , backloops :: Map ElemId [ElemId] }
 
 mkSynapsesCache :: Synapses a -> SynapsesCache
-getTo   :: SynapsesCache -> ElemId -> [ElemId]
-getFrom :: SynapsesCache -> ElemId -> [ElemId]
+--getTo   :: SynapsesCache -> ElemId -> [ElemId]
+--getFrom :: SynapsesCache -> ElemId -> [ElemId]
 
 
 newSynapse from to = if (idLayer $ getId from) < (idLayer $ getId to) && (isNeuron to || isOutput to)
@@ -174,9 +176,12 @@ newSynapse from to = if (idLayer $ getId from) < (idLayer $ getId to) && (isNeur
                      then Synapse from to
                      else error "backgoing synapse"
 
-mkSynapsesCache syns = SynapsesCache{ fromMap = fromListWith (++)           pars
-                                    , toMap   = fromListWith (++) $ reverse pars }
-                     where pars = map (\(Synapse from to) -> (getId from, [getId to])) syns
+mkSynapsesCache syns = SynapsesCache{ fromMap   = fromListWith (++) pars
+                                    , toMap     = fromListWith (++) $ reverse pars
+                                    , backloops = fromList $ foldr (++) [] $ filter (not . null) $ map f pars
+                                    }
+                     where pars         = map (\(Synapse from to) -> (getId from, [getId to])) syns
+                           f (from, to) = map (\x -> (from, to)) $ filter (\t -> idLayer from <= idLayer t) to
 
 getTo   SynapsesCache {toMap   = m} id = m ! id
 getFrom SynapsesCache {fromMap = m} id = m ! id
@@ -185,7 +190,8 @@ getFrom SynapsesCache {fromMap = m} id = m ! id
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
 
-data Network a = Network [NetworkLayer a] (Synapses a)
+data Network a = Network { layers :: [NetworkLayer a]
+                         , synapses :: (Synapses a) }
     deriving Show
 
 

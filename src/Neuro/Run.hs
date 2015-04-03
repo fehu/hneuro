@@ -1,32 +1,20 @@
-module Neuro.Run
-(
-
+module Neuro.Run(
+  NNet
+, NetworkInput
+, NeuroF
+, ExecutionAccumulator
+, nnetIter
 ) where
 
 import Data.Map ( Map, (!), assocs, empty, elems, filter, filterWithKey, fromList
-                , insert,  keysSet, size, toList,  union, unionWith )
+                , insert,  keysSet, size, toList,  union, unionWith, member, mapWithKey )
 --import Data.Map hiding ( map )
 
 import NamedFunc
 
 import Neuro
 
-ensuring cond err a = if cond then a
-                              else error err
-
-tupled :: (a -> b -> c) -> (a, b) -> c
-tupled f (x, y) = f x y
-
 type MapLike k a = [(k, a)]
-
-zipByKey :: (Eq k, Ord k) => Map k a -> Map k b -> MapLike k (a, b)
-zipByKey m1 m2 = ensuring (keysSet m1 == keysSet m2) "Maps have different keys" $
-                    map (\(k, v1) -> (k, (v1, m2 ! k))) $ assocs m1
-
---mapValues :: (a -> b) -> Map k a -> Map k b
---mapValues f m = Data.Map.map f m
-
--- unionWith (\(a, b) -> ) m1 m2
 
 --      walk layer by layer -->
 --                               calc layer outputs using previous layers
@@ -37,40 +25,97 @@ zipByKey m1 m2 = ensuring (keysSet m1 == keysSet m2) "Maps have different keys" 
 --                              gather layers back
 
 
-type NetworkState a  = [Layer a]
+type NNet a = [Layer a]
 
 type NetworkInput a = Map ElemId a
 
---nnetIter :: (Num a, Show a) => SynapsesCache -> NetworkInput a -> NetworkState a -> ExecutionAccumulator a TODO
---                                                     -> (NetworkState a, ExecutionAccumulator a)
-
+--type IsSnapshot = Bool
+type NeuroF a = Maybe (NetworkElem a -> NetworkElem a)
 
 type ExecutionAccumulator a = Map ElemId a
--- SynapsesCache
-processElem  :: SynapsesCache -> ExecutionAccumulator a -> NetworkElem a -> ExecutionAccumulator a
-processLayer :: SynapsesCache -> ExecutionAccumulator a -> Layer a -> ExecutionAccumulator a
+
+nnetIter :: (Num a, Show a) => SynapsesCache
+                            -> NetworkInput a
+                            -> NNet a
+                            -> ExecutionAccumulator a
+                            -> NeuroF a
+                            -> (NNet a, ExecutionAccumulator a)
+
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+--  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  -- --  --
+
+
+processElem  :: NeuroF a
+             -> SynapsesCache
+             -> ExecutionAccumulator a
+             -> NetworkElem a
+             -> (NetworkElem a, ExecutionAccumulator a)
+processLayer :: SynapsesCache
+             -> ExecutionAccumulator a
+             -> Layer a
+             -> NeuroF a
+             -> (Layer a, ExecutionAccumulator a)
 
 
 setInput :: NetworkElem a -> a -> NetworkElem a
 setInput i v = updateInput i (\_ -> v)
 
+addDelayedInput :: NetworkElem a -> a -> NetworkElem a
+addDelayedInput i v = updateDelayedInput i (\vs -> v:vs)
+
+setOutput :: NetworkElem a -> a -> NetworkElem a
+setOutput i v = updateOutput i (\_ -> v)
+
+processNeuron syns acc nEl mbF = (newElem, newAcc)
+                             where newAcc = insert id (napply f l) acc
+                                   l = [ napply wf x (acc ! i) | (x, i) <- zip w $ getTo syns id ]
+                                   f  = getTf nEl
+                                   wf = getWf nEl
+                                   w  = getWs nEl
+                                   id = getId nEl
+                                   newElem = maybe nEl ($ nEl) mbF
+
+processInput syns acc nEl _ = (newElem, acc)
+                             where newElem = setInput nEl $ acc ! getId nEl
+
+processDelayedInput syns acc nEl _ = (newElem, acc)
+                             where newElem = addDelayedInput nEl $ acc ! getId nEl
+
+processOutput syns acc nEl _ = (newElem, acc)
+                             where newElem = setOutput nEl $ acc ! getId nEl
+
+processElem mbF syns acc nEl | isNeuron nEl       = processNeuron       syns acc nEl mbF
+                             | isInput nEl        = processInput        syns acc nEl mbF
+                             | isDelayedInput nEl = processDelayedInput syns acc nEl mbF -- TODO
+                             | isOutput nEl       = processOutput       syns acc nEl mbF
 
 
+processLayer syns acc layer mbF = (newEl, snd fres)
+                                where fres = foldr f ([], acc) $ elems layer
+                                      f x (els, a) = (el:els, rAcc)
+                                                   where res  = processElem mbF syns a x
+                                                         el   = fst res
+                                                         rAcc = snd res
+                                      newEl = fromList $ map (\e -> (getId e, e)) $ fst fres
 
-processElem syns acc n = insert id (napply f l) acc
-                       where l = [ napply wf x (acc ! i) | (x, i) <- zip w $ getTo syns id ]
-                             f  = getTf n
-                             wf = getWf n
-                             w  = getWs n
-                             id = getId n
+nnetIterInner :: Num a => SynapsesCache
+                       -> NNet a
+                       -> ExecutionAccumulator a
+                       -> NeuroF a
+                       -> (NNet a, ExecutionAccumulator a)
+nnetIterInner syns (x:[]) acc mbF = ([fst res], snd res)
+                                  where res = processLayer syns acc x mbF
+nnetIterInner syns (x:xs) acc mbF = case rec of (rxs, racc) -> ((fst lRes):rxs, racc)
+                                           where rec = nnetIterInner syns xs (snd lRes) mbF
+                                                 lRes = processLayer syns acc x mbF
 
-processLayer syns acc layer = foldr (\x a -> processElem syns a x) acc $ elems layer
-
-nnetIterInner :: Num a => (SynapsesCache, NetworkState a, ExecutionAccumulator a)
-                        -> (NetworkState a, ExecutionAccumulator a)
-nnetIterInner (syns, (x:[]), acc) = ([x], processLayer syns acc x)
-nnetIterInner (syns, (x:xs), acc) = case rec of (rxs, racc) -> (x:rxs, racc)
-                              where rec = nnetIterInner (syns, xs, (processLayer syns acc x))
+-- 1. if acc is not empty, copy the values connected to delayed inputs and clear the rest
+-- 2. add inouts to the acc
+-- 3. run the inner step
+nnetIter syns inp nnet acc mbF = nnetIterInner syns nnet nAcc mbF
+                               where nAcc = union inp $ fromList $ foldr (++) [] $ map f $ assocs cleanAcc
+                                     f (k, x) = map (\kk -> (kk, x)) $ backloops syns ! k
+                                     cleanAcc = filterWithKey (\k _ -> member k $ backloops syns) acc
 
 --nnetIter syns inp st@(x:xs) acc = nnetIterInner (syns, st, fromAcc) -- union fromAcc inpAcc TODO
 --                                where f = \k _ -> idType k == NetO

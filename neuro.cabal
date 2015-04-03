@@ -12,10 +12,11 @@ library
                      Neuro
                      Neuro.DSL
                      Neuro.Create
+                     Neuro.Run
     exposed: True
     buildable: True
     hs-source-dirs: src
-    other-modules: Neuro.Run Neuro.GenTikz
+    other-modules: Neuro.GenTikz
 
 executable neuro-run
     build-depends: base, containers, random, text, text-format
