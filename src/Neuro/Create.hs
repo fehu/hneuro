@@ -2,8 +2,9 @@ module Neuro.Create
 ( fromDSL
 , CreationConf(..)
 , createElem
-, createStruct
+--, createStruct
 , createLayer
+, createDelayed
 , createConnections
 ) where
 
@@ -14,40 +15,39 @@ import Data.Map (assocs, (!))
 
 fromDSL :: (Eq a) => DSLResolved -> CreationConf a -> Network a
 
-createElem :: CreationConf a -> (DSL.Id, DSL.Elem) -> NetworkElem a
+createNeuron  :: CreationConf a -> DSL.Id -> Neuron a
+createDelayed :: DSLDelayed -> DelayedInput a
 
-createLayer  :: (Eq a) => CreationConf a -> DSLLayer -> NetworkLayer a
+createLayer  :: (Eq a) => CreationConf a -> DSLLayer -> Layer a
 
-createStruct :: (Eq a) => CreationConf a -> [DSLLayer] -> [NetworkLayer a]
+--createStruct :: (Eq a) => CreationConf a -> [DSLLayer] -> [] -> [Layer a]
 
-createConnections :: CreationConf a -> [Layer a] -> [DSLConnection] -> [Synapse a]
+createConnections :: CreationConf a -> [Layer a] -> [DSLConnection] -> [Synapse]
 
 
-data CreationConf a = CConf { zero  :: a
-                            , w     :: DSL.Id -> [a]
+data CreationConf a = CConf { w     :: DSL.Id -> [a]
                             , wf    :: DSL.Id -> NamedFunc a  (a -> a)
                             , tf    :: DSL.Id -> NamedFunc [a] a
                             }
 
 fromDSL dsl conf = Network layouts synapses
                  where layouts  = createStruct conf $ DSL.layers dsl
-                       synapses = createConnections conf (map layerElems layouts) $ connections dsl
+                       synapses = createConnections conf (map DSL.layers layouts) $ connections dsl
 
-createElem CConf { w  = w,
-                   wf = wf,
-                   tf = tf  } (id, DSL.Neuron)    = newNeuron id (w id) (wf id) (tf id)
-createElem CConf { zero = z } (id, DSL.In)        = newInput  id z
-createElem CConf { zero = z } (id, DSL.Out)       = newOutput id z
-createElem _                  (id, DSL.Delayed d) = newDelayedInput id d []
+createNeuron CConf { w  = w
+                   , wf = wf
+                   , tf = tf } id = newNeuron id (w id) (wf id) (tf id)
 
-createLayer conf layer = newNetworkLayer $ newLayer $ map (createElem conf) $ assocs $ iElems layer
+createDelayed (DSLDelayed id d)   = newDelayedInput id d []
+
+createLayer conf layer = newLayer $ map (createNeuron conf) $ assocs $ neuronIds layer -- ??
 
 createStruct conf ls = map (createLayer conf) ls
 
 createConnections conf layers conns = map (createConnection conf layers) conns
 
-getElem layers id = (layers !! idLayer id) ! id
+getElem layers id = (layers !! neuronIdLayer id) ! id
 
-createConnection conf layers conn = newSynapse fromElem toElem --(from conn) (to conn)
-                                  where fromElem = getElem layers $ idFromPair $ from conn
-                                        toElem   = getElem layers $ idFromPair $ to conn
+createConnection conf layers conn = Synapse fromElem toElem --(from conn) (to conn)
+                                  where fromElem = getElem layers $ neuronIdFromPair $ DSL.from conn
+                                        toElem   = getElem layers $ neuronIdFromPair $ DSL.from conn

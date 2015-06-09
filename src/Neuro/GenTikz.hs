@@ -61,7 +61,7 @@ genLayerDefaultNodeParams n  = [ "on chain" ~> show n
                                ]
 
 genLayer i l p np = tikzScope "scope" body mp
-                  where ids = keys $ iElems l
+                  where ids = neuronIds l
                         n  = length ids
                         body = intercalate "\n" $
                                [tikzNode id t $ mnp c | (a, c) <- zip ids [1..]
@@ -74,7 +74,7 @@ genStructInner []     _ _  _ _  = []
 genStructInner (i:xs) p np ls ln = tl:(genStructInner xs p np ls h)
                                where l  = ls !! i
                                      tl = genLayer i l p $ np ln
-                                     h  = head $ keys $ iElems l
+                                     h  = head $ neuronIds l
 
 genStruct ls = intercalate "\n" $ l0:ll
              where l0 = genLayer 0 (ls !! 0) [nodeDistMm 2] (\_ -> [])

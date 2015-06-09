@@ -30,7 +30,7 @@ type NNet a = [Layer a]
 type NetworkInput a = Map ElemId a
 
 --type IsSnapshot = Bool
-type NeuroF a = Maybe (NetworkElem a -> NetworkElem a)
+type NeuroF a = Maybe (Neuron a -> Neuron a)
 
 type ExecutionAccumulator a = Map ElemId a
 
