@@ -18,9 +18,12 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Neuro
+                       N2
+                       N2.DSL
   -- other-modules:
   -- other-extensions:
   build-depends:       base >=4.8 && <4.9
+                     , fixed-list >= 0.1.6
   hs-source-dirs:      src
   default-language:    Haskell2010
   default-extensions:  MultiParamTypeClasses
