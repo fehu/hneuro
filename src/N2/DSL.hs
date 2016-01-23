@@ -1,6 +1,8 @@
 {-# LANGUAGE ExistentialQuantification
            , TypeSynonymInstances
            , FlexibleInstances
+--           , DataKinds
+--           , PolyKinds
 --           , ConstraintKinds
          #-}
 
@@ -54,6 +56,12 @@ data Layer (t :: LayerType) a l = Layer (l a) deriving Typeable
 data SomeLayer (t :: LayerType) = forall a l . SomeLayer (Layer t a l)
 data SomeCLayer (t :: LayerType) l = forall a . SomeCLayer (Layer t a l)
 
+data ANNElem = NInput
+             | Neuron
+             | NOutput
+
+--data Synapse a b = Synapse a b
+
 data ANNetwork inputs hidden outputs = ANNetwork (SomeCLayer InputLayer inputs)
                                                  (hidden (SomeLayer HiddenLayer))
                                                  (SomeCLayer OutputLayer outputs)
@@ -61,9 +69,27 @@ data ANNetwork inputs hidden outputs = ANNetwork (SomeCLayer InputLayer inputs)
 
 -----------------------------------------------------------------------------
 
-data NInput = NInput
-data NOutput = NOutput
+data Nat = Succ Nat
+         | Zero
 
+type Nat0 = Zero
+type Nat1 = Succ Zero
+type Nat2 = Succ Nat1
+type Nat3 = Succ Nat2
+type Nat4 = Succ Nat3
+
+--nat0 = Zero
+--nat1 = Succ nat0
+--nat2 = Succ nat1
+--nat3 = Succ nat2
+
+-----------------------------------------------------------------------------
+
+
+
+--data NInput = NInput
+--data NOutput = NOutput
+--data Neuron = Neuron
 
 --type family NeuronByLayer (t :: LayerType) :: *
 --
@@ -87,12 +113,67 @@ instance GenFixedList FixedList3 where genFixedList a = a :. genFixedList a
 
 -----------------------------------------------------------------------------
 
+--type family FixedListElem n (f :: * -> *) :: *       -- (n :: Nat)
+
+type family IsNat a :: Nat
+
+class FixedListElem (n :: Nat) f where
+    selElem :: (IsNat b ~ n) => b -> Layer t a f -> a
+
+instance FixedListElem Nat1 FixedList1 where selElem _ (Layer (a :. _)) = a
+instance FixedListElem Nat1 FixedList2 where selElem _ (Layer (a :. _)) = a
+instance FixedListElem Nat1 FixedList3 where selElem _ (Layer (a :. _)) = a
+instance FixedListElem Nat1 FixedList4 where selElem _ (Layer (a :. _)) = a
+
+instance FixedListElem Nat2 FixedList2 where selElem _ (Layer (_ :. a :. _)) = a
+instance FixedListElem Nat2 FixedList3 where selElem _ (Layer (_ :. a :. _)) = a
+instance FixedListElem Nat2 FixedList4 where selElem _ (Layer (_ :. a :. _)) = a
+
+instance FixedListElem Nat3 FixedList3 where selElem _ (Layer (_ :. _ :. a :. _)) = a
+instance FixedListElem Nat3 FixedList4 where selElem _ (Layer (_ :. _ :. a :. _)) = a
+
+instance FixedListElem Nat4 FixedList4 where selElem _ (Layer (_ :. _ :. _ :. a :. _)) = a
+
+--instance FixedListElem Nat1 FixedList1 where fElem _ (a :. _) = a
+--instance FixedListElem Nat1 FixedList2 where fElem _ (a :. _) = a
+--instance FixedListElem Nat1 FixedList3 where fElem _ (a :. _) = a
+--instance FixedListElem Nat1 FixedList4 where fElem _ (a :. _) = a
+--
+--instance FixedListElem Nat2 FixedList2 where fElem _ (_ :. a :. _) = a
+--instance FixedListElem Nat2 FixedList3 where fElem _ (_ :. a :. _) = a
+--instance FixedListElem Nat2 FixedList4 where fElem _ (_ :. a :. _) = a
+--
+--instance FixedListElem Nat3 FixedList3 where fElem _ (_ :. _ :. a :. _) = a
+--instance FixedListElem Nat3 FixedList4 where fElem _ (_ :. _ :. a :. _) = a
+--
+--instance FixedListElem Nat4 FixedList4 where fElem _ (_ :. _ :. _ :. a :. _) = a
+
+--selElem :: (FixedListElem n l ~ a) => n -> Layer t a l -> a
+--selElem n l = FixedListElem n l
+
+
+--data Sel (n :: Nat) a = Sel a
+
+--selElem :: (FixedListElem n l, IsNat x ~ n) => x -> Layer t a l -> a
+--selElem i l = fElem i l
+
+-----------------------------------------------------------------------------
+
+--type NextLayerElem prev = prev ->
+
+--type Inputs l a self = l (Synapse (SelElem a) self)
+
+--hiddenLayer :: Cons
+
+
+-----------------------------------------------------------------------------
+
 
 inputLayer :: (GenFixedList l) => SomeCLayer InputLayer l
 inputLayer = SomeCLayer . Layer $ genFixedList NInput
 
-outputLayer :: (GenFixedList l) => SomeCLayer OutputLayer l
-outputLayer = SomeCLayer . Layer $ genFixedList NOutput
+--outputLayer :: (GenFixedList l) => SomeCLayer OutputLayer l
+--outputLayer = SomeCLayer . Layer $ genFixedList NOutput
 
 type InputLayer' l  = SomeCLayer InputLayer l
 type OutputLayer' l = SomeCLayer OutputLayer l
@@ -103,7 +184,8 @@ describeANN :: ( GenFixedList i
                , GenFixedList o) => ANNetwork i h o
 describeANN = ANNetwork inputLayer
                         undefined
-                       outputLayer
+                        undefined
+--                        outputLayer
 
 --nnet = ANNetwork (inputLayer :: InputLayer' FixedList2)
 --                 undefined
