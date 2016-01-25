@@ -86,7 +86,6 @@ type Nat4 = Succ Nat3
 -----------------------------------------------------------------------------
 
 
-
 --data NInput = NInput
 --data NOutput = NOutput
 --data Neuron = Neuron
@@ -157,7 +156,12 @@ instance FixedListElem Nat4 FixedList4 where selElem _ (Layer (_ :. _ :. _ :. a 
 --selElem :: (FixedListElem n l, IsNat x ~ n) => x -> Layer t a l -> a
 --selElem i l = fElem i l
 
+--a = selElem (Succ Zero) (Layer (1 :. Nil))
+
 -----------------------------------------------------------------------------
+
+type Sel prev sel a = prev a -> sel a
+
 
 --type NextLayerElem prev = prev ->
 
