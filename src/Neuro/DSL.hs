@@ -21,7 +21,7 @@
 --
 -----------------------------------------------------------------------------
 
-module N3 (
+module Neuro.DSL (
 
 ) where
 
@@ -37,6 +37,15 @@ data Vec :: Nat -> * -> * where
   VCons :: a -> Vec n a -> Vec (Su n) a
 
 instance Functor (Vec n) where fmap f (VCons h t) = VCons (f h) (fmap f t)
+
+instance Foldable (Vec n) where foldr _ b0 VNil = b0
+                                foldr f b0 (VCons a t) = let res = f a b0
+                                                         in foldr f res t
+
+class GenVec (n :: Nat) where genVec :: a -> SomeNat n ->  Vec n a
+
+instance                GenVec Nat0     where genVec _ _ = VNil
+instance (GenVec np) => GenVec (Su np)  where genVec a _ = a +: genVec a undefined
 
 
 infixr 5 +:
@@ -85,7 +94,7 @@ data NeuronInputs prev = forall n . NeuronInputs (HList prev -> Vec n NElem)
 
 data NElem = NInput
            | forall n . Neuron (Vec n NElem)
-           | NOutput
+--           | NOutput
 
 type NLayer n = Vec n NElem
 
@@ -97,17 +106,23 @@ mkNeuron' hl (NeuronInputs sel) = Neuron $ sel hl
 
 ----------------------------------------------------------------------------
 
-inputsLayer :: SomeNat n -> HList '[NLayer n]
-inputsLayer = undefined -- TODO
+inputsLayer :: (GenVec n) => SomeNat n -> HList '[NLayer n]
+inputsLayer _ = genVec NInput (undefined :: SomeNat n) .*. HNil
 
 
 nextLayer :: Vec n (NeuronInputs prev) -> HList prev -> NLayer n
 nextLayer nsel prev = fmap (mkNeuron' prev) nsel
 
+-- | Alias for 'nextLayer'.
+lastLayer = nextLayer
+
 (==>) :: HList prev -> (HList prev -> NLayer n) -> HList (NLayer n ': prev)
 prev ==> mkNext = let next = mkNext prev
                     in next .*. prev
 
+
+-- * all the inputs are in the first layer
+-- * the last layer contains the outputs
 
 test = inputsLayer (undefined :: SomeNat Nat2)
     ==> nextLayer (  NeuronInputs (\(HCons il _) -> vecElem1 il +: vecElem2 il +: VNil)
@@ -119,15 +134,12 @@ test = inputsLayer (undefined :: SomeNat Nat2)
                   +: NeuronInputs (\(HCons l1 (HCons il _)) -> vecElem1 l1 +: vecElem2 il +: VNil)
                   +: VNil
                   )
-    ==> nextLayer (  NeuronInputs (\(HCons l2 _) -> vecElem1 l2
+    ==> lastLayer (  NeuronInputs (\(HCons l2 _) -> vecElem1 l2
                                                  +: vecElem2 l2
                                                  +: vecElem3 l2
                                                  +: VNil
                                   ) +: VNil
                   )
-
-----------------------------------------------------------------------------
-
 
 
 -----------------------------------------------------------------------------
