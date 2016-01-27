@@ -18,7 +18,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Neuro.DSL
-  -- other-modules:
+  other-modules:       Neuro.Util
   -- other-extensions:
   build-depends:       base >=4.8 && <4.9
                      , HList >= 0.4
