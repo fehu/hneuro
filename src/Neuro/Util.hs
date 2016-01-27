@@ -1,8 +1,3 @@
-{-# LANGUAGE GADTs
-           , FlexibleContexts
-           , FlexibleInstances
-       #-}
-
 -----------------------------------------------------------------------------
 --
 -- Module      :  Neuro.Util
@@ -16,6 +11,11 @@
 -- |
 --
 -----------------------------------------------------------------------------
+
+{-# LANGUAGE GADTs
+           , FlexibleContexts
+           , FlexibleInstances
+       #-}
 
 module Neuro.Util (
 
