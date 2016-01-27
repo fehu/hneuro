@@ -36,16 +36,12 @@ data Vec :: Nat -> * -> * where
   VNil  :: Vec Ze a
   VCons :: a -> Vec n a -> Vec (Su n) a
 
---type VecR a (n :: Nat) = Vec n a
-
 instance Functor (Vec n) where fmap f (VCons h t) = VCons (f h) (fmap f t)
 
 
 infixr 5 +:
 (+:) :: a -> Vec n a -> Vec (Su n) a
 (+:) = VCons
-
---instance Foldable (Vec n) where foldr f b0 t =
 
 -----------------------------------------------------------------------------
 
@@ -87,58 +83,22 @@ vecElem3 = vecElem (undefined :: SomeNat Nat3)
 
 data NeuronInputs prev = forall n . NeuronInputs (HList prev -> Vec n NElem)
 
---type Inputs
-
---data NElem = NElem
 data NElem = NInput
            | forall n . Neuron (Vec n NElem)
            | NOutput
 
 type NLayer n = Vec n NElem
 
---type NLayers = HList
-
---type PreviousLayers ln = Vec
-
---type SelectSynapseInput prev = prev -> NElem
-
---type SelectSynapseInput prev = HList prev -> NElem
-
---type EmptyNNet = HNil
-
 
 ----------------------------------------------------------------------------
 
---mkInputLayer ::
-
---class Neuron n (in' :: Nat) where nInputs   :: n in' -> Vec in' NElem
---                                  newNeuron :: Vec in' NElem -> n in'
-
 mkNeuron' :: HList prev -> NeuronInputs prev -> NElem
 mkNeuron' hl (NeuronInputs sel) = Neuron $ sel hl
-
---nInputs (Neuron v) = v
-
---data NeuronDescriptor (n :: Nat) = NeuronDescriptor (Vec n NElem)
-
---instance Neuron NeuronDescriptor n where nInputs (NeuronDescriptor v) = v
---                                         newNeuron = NeuronDescriptor
-
---mkNeuron :: HList prev -> Vec (SelectSynapseInput prev) n -> NElem
---mkNeuron = undefined
-
---nextLayer :: HList prev -> Vec (SelectSynapseInput prev) n -> NLayer n
---nextLayer l selVec = undefined
 
 ----------------------------------------------------------------------------
 
 inputsLayer :: SomeNat n -> HList '[NLayer n]
 inputsLayer = undefined -- TODO
-
-nextLayer2 :: HList prev -> Vec n (NeuronInputs prev) -> HList (NLayer n ': prev)
-nextLayer2 prev nsel = layer .*. prev
-    where layer = fmap (mkNeuron' prev) nsel
-
 
 
 nextLayer :: Vec n (NeuronInputs prev) -> HList prev -> NLayer n
@@ -148,31 +108,8 @@ nextLayer nsel prev = fmap (mkNeuron' prev) nsel
 prev ==> mkNext = let next = mkNext prev
                     in next .*. prev
 
---data LayersBuilder (nIn :: Nat) (nOut :: Nat) hl = LayersBuilder hl
 
---newtype LayersBuilder hl = LayersBuilder hl
---
---
---instance Functor LayersBuilder
-----    where fmap f (LayersBuilder hl) =
---
---instance Applicative LayersBuilder
---
---instance Monad LayersBuilder
-
-
---test = do l1 <- inputLayer
---          l2 <- nextLayer2 (HCons layer _ -> vecElem1 layer)
-
-
-test = undefined
-    where l1 = inputsLayer (undefined :: SomeNat Nat1)
-          l2 = nextLayer2 l1
-                $ NeuronInputs (\(HCons layer _) -> vecElem1 layer +: VNil) +: VNil
-
-          -- undefined
-
-test2 = inputsLayer (undefined :: SomeNat Nat2)
+test = inputsLayer (undefined :: SomeNat Nat2)
     ==> nextLayer (  NeuronInputs (\(HCons il _) -> vecElem1 il +: vecElem2 il +: VNil)
                   +: NeuronInputs (\(HCons il _) -> vecElem1 il +: vecElem2 il +: VNil)
                   +: VNil
@@ -192,15 +129,7 @@ test2 = inputsLayer (undefined :: SomeNat Nat2)
 ----------------------------------------------------------------------------
 
 
-foo :: Nat -> Vec1 a -> a
-foo _ (VCons x _) = x
-
-a = foo Ze
-b = foo (Su Ze)
 
 -----------------------------------------------------------------------------
 
-type A = Vec (Su Ze) Int
 
-nat1 :: Nat
-nat1 = Su Ze
