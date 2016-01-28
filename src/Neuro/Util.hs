@@ -34,6 +34,7 @@ module Neuro.Util (
 
 , GenVec(..)
 , (+:)
+, vec2list
 
 , VecElem(..)
 , vecElem1
@@ -51,6 +52,10 @@ data Nat = Ze | Su Nat
 data Vec :: Nat -> * -> * where
   VNil  :: Vec Ze a
   VCons :: a -> Vec n a -> Vec (Su n) a
+
+vec2list :: Vec n a -> [a]
+vec2list (VCons h t) = h : vec2list t
+vec2list VNil = []
 
 -----------------------------------------------------------------------------
 

@@ -22,6 +22,8 @@ module Neuro.DSL (
 , lastLayer
 , (==>)
 
+, NNDescriptor(..)
+
 , NeuronInputs(..)
 , module Neuro.Util
 , module Data.HList
@@ -50,7 +52,7 @@ lastLayer = nextLayer
 prev ==> mkNext = let next = mkNext prev
                     in next .*. prev
 
-
+newtype NNDescriptor h = NNDescriptor (HList h)
 
 
 

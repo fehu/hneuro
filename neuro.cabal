@@ -18,15 +18,25 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Neuro.DSL
+                       Neuro.Show
+                       Neuro.Show.Tikz
+
+                       -- TODO: move it
+                       Tikz.DSL
 
   other-modules:       Neuro.Util
                        Neuro.DSL.Internal
 
+                       -- temp
+                       Neuro.Show.TikzOld
+                       Tikz.DSL_old
                        Test1
 
   -- other-extensions:
   build-depends:       base >=4.8 && <4.9
                      , HList >= 0.4
+                     , bytestring >= 0.10
+--                     , utf8-string >= 1
 
   hs-source-dirs:      src
   default-language:    Haskell2010
