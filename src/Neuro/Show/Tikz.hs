@@ -34,9 +34,6 @@ import Tikz.DSL
 
 import Data.HList
 import Data.ByteString.Char8 (ByteString)
---import qualified Data.ByteString.Char8 as BS
-
---import Control.Applicative( (<*>) )
 
 -----------------------------------------------------------------------------
 
@@ -50,10 +47,6 @@ nnet2tikz cfg (NNDescriptor layers) = Tikz . elemRepr 0
                                      (pictureStyles cfg)
                                      (pictureDefs cfg)
                                      (renderLayers cfg layers)
-
---                            where body =
---                            [renderLayer, renderSynopses] <*> [cfg]
---                                        <*> zipWith (mkALayer cfg) [1..] layers
 
 data RenderConfig = RenderConfig { pictureAttrs   :: PictureAttrs
                                  , pictureStyles  :: PictureStyles
@@ -107,14 +100,17 @@ defaultRenderLayers :: [SomeLayer] -> [Expr]
 defaultRenderLayers = defaultRenderLayers' . zipWith f [0..] . reverse
     where f n (SomeLayer l) = (n, vec2list l)
 
-defaultRenderLayers' ((0, l) : ls) = Expr EmptyLine : defaultRenderInputs l' ++ annot : defaultRenderLayers' ls
+defaultRenderLayers' ((0, l) : ls) = Expr EmptyLine : defaultRenderInputs l'
+                                  ++ annot : defaultRenderLayers' ls
     where annot = layerAnnot l' "Input Layer"
           l' = reverse l
 
-defaultRenderLayers' [(n, l)] = Expr EmptyLine : defaultRenderOutputs l ++ [annot]
+defaultRenderLayers' [(n, l)] = Expr EmptyLine : defaultRenderOutputs l
+                             ++ [annot]
     where annot = layerAnnot l "Output Layer"
 
-defaultRenderLayers' ((n, l) : ls) = Expr EmptyLine : defaultRenderHidden l ++ annot : defaultRenderLayers' ls
+defaultRenderLayers' ((n, l) : ls) = Expr EmptyLine : defaultRenderHidden l
+                                  ++ annot : defaultRenderLayers' ls
     where annot = layerAnnot l $ "Hidden Layer \\#" ++ show n
 
 
@@ -122,15 +118,19 @@ defaultRenderLayers' ((n, l) : ls) = Expr EmptyLine : defaultRenderHidden l ++ a
 mkNode l i name attrs = Node name attrs (Just $ "\\layersep*" ++ show l ++ ",-" ++ show i) []
 
 defaultRenderInputs (n@(NInput i): ns) = Expr node : defaultRenderInputs ns
-    where node = mkNode 0 i (nElemId n) [Attr "input neuron", Attr $ "pin=left:Input " ++ show i]
+    where node = mkNode 0 i (nElemId n)
+                        [Attr "input neuron", Attr $ "pin=left:Input " ++ show i]
 defaultRenderInputs [] = []
 
 
 defaultRenderGeneric attrs (n@(Neuron inputs l i) : ns) =
     Expr node : synapses ++ defaultRenderGeneric attrs ns
 
-    where node = mkNode l i (nElemId n) (attrs i)
-          synapses = [] -- TODO
+    where node = mkNode l i this (attrs i)
+          synapses = do input <- vec2list inputs
+                        let from = nElemId input
+                        return . Expr $ Path Edge from this
+          this = nElemId n
 
 defaultRenderGeneric _ [] = []
 
@@ -141,12 +141,5 @@ defaultRenderOutputs =
                                 , Attr $ "pin={[pin edge={->}]right:Output " ++ show i ++ "}"
                                 ])
 
---defaultRenderSynopses :: ALayer -> [Expr]
---defaultRenderSynopses i (SomeLayer l) = defaultRenderSynopses' i $ zip [1..] $ vec2list l
-
 defaultRenderSynopses' = undefined
-
---defaultRenderSynopses' l ((i, Neuron ) : ns) = Path Edge
---                                              ("")
---                                              ""
 

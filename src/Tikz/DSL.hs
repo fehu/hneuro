@@ -188,6 +188,8 @@ picture (PictureAttrs attrs) (PictureStyles styles) (PictureDefs defs) body =
                             : map Expr defs ++ Expr EmptyLine
                             : body)
 
+-----------------------------------------------------------------------------
+
 data Style = Style String [Attr]
 
 instance Elem Style where elemMultiline _ = False
@@ -202,7 +204,9 @@ instance Elem Style where elemMultiline _ = False
 
 type instance TypeOfElem Style = TExpr
 
--- \def\layersep{2.5cm}
+
+-----------------------------------------------------------------------------
+
 data Def = Def String String
 
 instance Elem Def where elemMultiline _ = False
@@ -215,6 +219,8 @@ instance Elem Def where elemMultiline _ = False
 
 type instance TypeOfElem Def = TExpr
 
+
+-----------------------------------------------------------------------------
 
 data Node = Node String [Attr] (Maybe String) [Expr]
 
@@ -250,6 +256,7 @@ instance Elem Node where
 
 type instance TypeOfElem Node = TExpr
 
+-----------------------------------------------------------------------------
 
 data PathType = Edge
 
@@ -265,88 +272,7 @@ instance Elem Path where elemMultiline _ = False
                             , pack ";"
                             ]
 
-
------------------------------------------------------------------------------
-
---data GenericExprHead = GenericExprHead String (Maybe Attr) [Attr]
---
---surround pre suf x = concat [pack pre, x, pack suf]
---
---mainAttrRepr :: Maybe Attr -> Repr
---mainAttrRepr (Just a) = surround "{" "}" $ elemRepr 0 a --concat [pack "{", elemRepr a 0, pack "}"]
---mainAttrRepr _        = BS.empty
---
---extraAttrsRepr :: [Attr] -> Repr
---extraAttrsRepr [] = BS.empty
---extraAttrsRepr as = surround "[" "]" . intercalate (pack ",") $ map (elemRepr 0) as
---
---exprHeadRepr (GenericExprHead name mAttr eAttrs) ind =
---    concat [pack $ i ++ "\\" ++ name, mainAttrRepr mAttr, extraAttrsRepr eAttrs]
---        where i = replicate ind ' '
---
---data GenericExpr = GenericExpr GenericExprHead ExprType MkExpr Bool
---
---instance Elem GenericExpr where elemType _ = TExpr
---                                elemMultiline (GenericExpr _ _ _ m) = m
---                                elemRepr ind (GenericExpr gh repr _) = exprHeadRepr gh ind `append` repr ind
---
---type MkExpr = Indent -> Repr
-
---newExpr :: String -> (Maybe Attr) -> [Attr] -> MkExpr -> Repr
---newExpr name ma eas bf =
-
---instance Elem GenericCmd where elemType _ = TExpr Cmd
-
------------------------------------------------------------------------------
-
---data ElemType = TAttr | TExpr
---data ExprType =  Cmd | Env
---
---class ElemExpr e where exprType      :: e -> ExprType
---                       exprMultiline :: e -> Bool
---
---class ElemAttr a
---
---class Elem a where elemType      :: a -> ElemType
---                   elemMultiline :: a -> Bool
-
-
---type family A (e :: Constraint) where
---    A (ElemExpr e) = TExpr
---    A (ElemAttr e) = TAttr
-
---class B a e where elemType'      :: a -> ElemType
---                  elemMultiline' :: a -> Bool
---
---instance B a (ElemExpr)
-
-
---instance (A (ElemAttr a) ~ TAttr) => Elem a
---instance (A (ElemExpr e) ~ TExpr) => Elem e
-
-
---instance (Expr a) => Elem a
-
-
---class ElemRepr repr where elemRepr :: (Elem a) => a -> repr
---                          str2repr :: String -> repr
-
-
-
---data TElem (t :: ElemType) = forall a . Elem a t => TElem (a t)
-
---class ElemRepr repr where elemRepr :: (Elem a t) => a t -> repr
---                          str2repr :: String -> repr
-
---class (Elem a t) => ElemRepr a t repr where elemRepr :: a t -> repr
-
---data Expr = forall a . Elem a TExpr
-
------------------------------------------------------------------------------
-
-
-
-
+type instance TypeOfElem Path = TExpr
 
 -----------------------------------------------------------------------------
 

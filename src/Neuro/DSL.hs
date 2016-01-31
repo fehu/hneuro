@@ -49,7 +49,6 @@ inputsLayer _ = (genVec NInput (undefined :: Nat' n) .*. HNil, 0)
 
 nextLayer :: Vec n (NeuronInputs prev) -> NNBuilder prev -> NLayer n
 nextLayer nsel (prev, l) = fmap (uncurry (mkNeuron' prev (l+1))) $ vecZip' [1..] nsel
---nextLayer nsel prev = fmap (mkNeuron' prev) nsel
 
 -- | Alias for 'nextLayer'.
 lastLayer = nextLayer
@@ -60,7 +59,6 @@ b@(prev, l) ==> mkNext = let next = mkNext b
 
 newtype NNDescriptor = NNDescriptor [SomeLayer]
 
---data X (x :: [* Num]) = X (HList x)
 
 data HLayersToList = HLayersToList
 
