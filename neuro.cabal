@@ -28,8 +28,6 @@ library
                        Neuro.DSL.Internal
 
                        -- temp
-                       Neuro.Show.TikzOld
-                       Tikz.DSL_old
                        Test1
 
   -- other-extensions:

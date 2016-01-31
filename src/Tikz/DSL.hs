@@ -32,6 +32,7 @@ module Tikz.DSL (
 
 , EmptyLine(..)
 , CommentLines(..)
+, RawExpr(..)
 
 , picture
 , PictureDefs(..)
@@ -84,6 +85,8 @@ data Env = Env { envName  :: String
 data EmptyLine = EmptyLine
 data CommentLines = CommentLines [String]
 
+data RawExpr = RawExpr String
+
 
 instance Elem Attr where -- elemType _ = TAttr
                          elemMultiline (Attr a) = elemMultiline a
@@ -122,12 +125,16 @@ instance Elem CommentLines where -- elemType _ = TExpr
                                                                     ++ "\n"
                                                               where pre = indent' i ++ "% "
 
+instance Elem RawExpr where elemMultiline (RawExpr s) = '\n' `elem` s
+                            elemRepr _ (RawExpr s) = pack s
+
 type instance TypeOfElem Attr = TAttr
 type instance TypeOfElem Expr = TExpr
 type instance TypeOfElem Cmd  = TExpr
 type instance TypeOfElem Env  = TExpr
 type instance TypeOfElem EmptyLine    = TExpr
 type instance TypeOfElem CommentLines = TExpr
+type instance TypeOfElem RawExpr = TExpr
 
 -----------------------------------------------------------------------------
 
@@ -218,6 +225,9 @@ instance Elem Node where
                                         , indent i
                                         , pack "}"
                                         ]
+
+type instance TypeOfElem Node = TExpr
+
 
 data PathType = Edge
 

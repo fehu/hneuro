@@ -13,18 +13,21 @@
 -- * all the inputs are in the first layer
 -- * the last layer contains the outputs
 
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators, FlexibleInstances, FlexibleContexts #-}
 
 module Neuro.DSL (
 
-  inputsLayer
+  nnet
+, inputsLayer
 , nextLayer
 , lastLayer
 , (==>)
 
 , NNDescriptor(..)
+, NElem
 
 , NeuronInputs(..)
+--, SomeLayer(..)
 , module Neuro.Util
 , module Data.HList
 
@@ -52,9 +55,16 @@ lastLayer = nextLayer
 prev ==> mkNext = let next = mkNext prev
                     in next .*. prev
 
-newtype NNDescriptor h = NNDescriptor (HList h)
+newtype NNDescriptor = NNDescriptor [SomeLayer]
 
+--data X (x :: [* Num]) = X (HList x)
 
+data HLayersToList = HLayersToList
+
+instance ApplyAB HLayersToList (Vec n NElem, [SomeLayer]) [SomeLayer] where
+    applyAB _ (vec, acc) = SomeLayer vec : acc
+
+nnet hl = hFoldr HLayersToList ([] :: [SomeLayer]) hl
 
 
 ----------------------------------------------------------------------------

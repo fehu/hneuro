@@ -18,7 +18,9 @@ module Neuro.DSL.Internal (
 
   NElem(..)
 , NeuronInputs(..)
+
 , NLayer
+, SomeLayer(..)
 
 , mkNeuron'
 
@@ -34,6 +36,8 @@ data NElem = NInput
            | forall n . Neuron (Vec n NElem)
 
 type NLayer n = Vec n NElem
+
+data SomeLayer = forall n . SomeLayer (Vec n NElem)
 
 data NeuronInputs prev = forall n . NeuronInputs (HList prev -> Vec n NElem)
 

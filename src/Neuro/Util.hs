@@ -53,9 +53,35 @@ data Vec :: Nat -> * -> * where
   VNil  :: Vec Ze a
   VCons :: a -> Vec n a -> Vec (Su n) a
 
+
+--nat2int :: Nat -> Int
+--nat2int Ze = 0
+--nat2int (Su x) = nat2int x + 1
+
+
+class Nat2Integral (n :: Nat) where
+    nat2int :: Integral i => SomeNat n -> i
+
+instance Nat2Integral Ze where
+    nat2int _ = 0
+
+instance Nat2Integral n => Nat2Integral (Su n) where
+    nat2int n = nat2int n + 1
+
+
+--class NatValue (n :: Nat) where natValue :: SomeNat n -> n
+
+--class NatToInt (n :: Nat) where nat2int :: SomeNat n -> Int
+
+--instance NatToInt Ze where nat2int _ = 0
+--instance (NatToInt s) => NatToInt (Su s) where nat2int _ = 1 + nat2int (undefined :: SomeNat s)
+
 vec2list :: Vec n a -> [a]
 vec2list (VCons h t) = h : vec2list t
 vec2list VNil = []
+
+--vecLength :: Vec n a -> Int
+--vecLength = nat2int n
 
 -----------------------------------------------------------------------------
 
