@@ -28,7 +28,6 @@ library
                        Neuro.DSL.Internal
 
                        -- temp
-                       Test1
 
   -- other-extensions:
   build-depends:       base >=4.8 && <4.9
@@ -41,3 +40,17 @@ library
   default-extensions:  MultiParamTypeClasses
                        TypeFamilies
                        DataKinds
+
+executable test1
+  hs-source-dirs:      src
+  main-is:             Test1.hs
+
+  build-depends:       base >=4.8 && <4.9
+                     , HList >= 0.4
+                     , bytestring >= 0.10
+
+  default-language:    Haskell2010
+  default-extensions:  MultiParamTypeClasses
+                       TypeFamilies
+                       DataKinds
+

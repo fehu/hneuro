@@ -40,6 +40,7 @@ module Tikz.DSL (
 , PictureStyles(..)
 
 , Style(..)
+, Def(..)
 
 , Node(..)
 
@@ -138,9 +139,9 @@ type instance TypeOfElem RawExpr = TExpr
 
 -----------------------------------------------------------------------------
 
-newtype PictureDefs   = PictureDefs [Cmd]
+newtype PictureDefs   = PictureDefs [Def]
 newtype PictureAttrs  = PictureAttrs [Attr]
-newtype PictureStyles = PictureStyles [Expr]
+newtype PictureStyles = PictureStyles [Style]
 
 -----------------------------------------------------------------------------
 
@@ -182,8 +183,10 @@ instance Elem String where elemMultiline _ = False
 
 -----------------------------------------------------------------------------
 
-picture (PictureAttrs attrs) (PictureStyles styles) body =
-    Env "tikzpicture" attrs (styles ++ Expr EmptyLine : body)
+picture (PictureAttrs attrs) (PictureStyles styles) (PictureDefs defs) body =
+    Env "tikzpicture" attrs ( map Expr styles ++ Expr EmptyLine
+                            : map Expr defs ++ Expr EmptyLine
+                            : body)
 
 data Style = Style String [Attr]
 
@@ -197,6 +200,22 @@ instance Elem Style where elemMultiline _ = False
                             , pack ";"
                             ]
 
+type instance TypeOfElem Style = TExpr
+
+-- \def\layersep{2.5cm}
+data Def = Def String String
+
+instance Elem Def where elemMultiline _ = False
+                        elemRepr i (Def name val) = concat [
+                            indent i
+                          , latexKey "def"
+                          , latexKey name
+                          , surroundBracketsCurly' val
+                          ]
+
+type instance TypeOfElem Def = TExpr
+
+
 data Node = Node String [Attr] (Maybe String) [Expr]
 
 instance Elem Node where
@@ -208,23 +227,26 @@ instance Elem Node where
         , optArgs attrs
         , surroundBracketsRound' name
         , at'
-        , body'
+        , body' `append` pack ";"
         ]
         where at' = case at of Just a -> concat [
-                                            pack "at "
+                                            pack " at "
                                           , surroundBracketsRound' a
                                           ]
                                _      -> BS.empty
 
-              body' = case body of [] -> pack "{};"
+              body' = case body of [] -> pack "{}"
+                                   [x] | not $ elemMultiline x -> surroundBracketsCurly
+                                                                . surroundSpace 1
+                                                                $ elemRepr 0 x
                                    _  -> concat [
-                                          pack "{"
-                                        , newline
-                                        , lines $ map (elemRepr (nextIndent i)) body
-                                        , newline
-                                        , indent i
-                                        , pack "}"
-                                        ]
+                                              pack "{"
+                                            , newline
+                                            , lines $ map (elemRepr (nextIndent i)) body
+                                            , newline
+                                            , indent i
+                                            , pack "}"
+                                            ]
 
 type instance TypeOfElem Node = TExpr
 

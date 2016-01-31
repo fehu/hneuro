@@ -32,8 +32,8 @@ import Data.HList
 
 -----------------------------------------------------------------------------
 
-data NElem = NInput
-           | forall n . Neuron (Vec n NElem)
+data NElem = NInput Int
+           | forall n . Neuron (Vec n NElem) Int Int
 
 type NLayer n = Vec n NElem
 
@@ -43,6 +43,6 @@ data NeuronInputs prev = forall n . NeuronInputs (HList prev -> Vec n NElem)
 
 ----------------------------------------------------------------------------
 
-mkNeuron' :: HList prev -> NeuronInputs prev -> NElem
-mkNeuron' hl (NeuronInputs sel) = Neuron $ sel hl
+mkNeuron' :: HList prev -> Int -> Int -> NeuronInputs prev -> NElem
+mkNeuron' hl n i (NeuronInputs sel) = Neuron (sel hl) n i
 

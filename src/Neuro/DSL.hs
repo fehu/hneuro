@@ -41,19 +41,22 @@ import Data.HList
 
 ----------------------------------------------------------------------------
 
-inputsLayer :: (GenVec n) => SomeNat n -> HList '[NLayer n]
-inputsLayer _ = genVec NInput (undefined :: SomeNat n) .*. HNil
+type NNBuilder prev = (HList prev, Int)
+
+inputsLayer :: (GenVec n) => Nat' n -> NNBuilder '[NLayer n]
+inputsLayer _ = (genVec NInput (undefined :: Nat' n) .*. HNil, 0)
 
 
-nextLayer :: Vec n (NeuronInputs prev) -> HList prev -> NLayer n
-nextLayer nsel prev = fmap (mkNeuron' prev) nsel
+nextLayer :: Vec n (NeuronInputs prev) -> NNBuilder prev -> NLayer n
+nextLayer nsel (prev, l) = fmap (uncurry (mkNeuron' prev (l+1))) $ vecZip' [1..] nsel
+--nextLayer nsel prev = fmap (mkNeuron' prev) nsel
 
 -- | Alias for 'nextLayer'.
 lastLayer = nextLayer
 
-(==>) :: HList prev -> (HList prev -> NLayer n) -> HList (NLayer n ': prev)
-prev ==> mkNext = let next = mkNext prev
-                    in next .*. prev
+(==>) :: NNBuilder prev -> (NNBuilder prev -> NLayer n) -> NNBuilder (NLayer n ': prev)
+b@(prev, l) ==> mkNext = let next = mkNext b
+                    in (next .*. prev, l+1)
 
 newtype NNDescriptor = NNDescriptor [SomeLayer]
 
@@ -61,33 +64,11 @@ newtype NNDescriptor = NNDescriptor [SomeLayer]
 
 data HLayersToList = HLayersToList
 
-instance ApplyAB HLayersToList (Vec n NElem, [SomeLayer]) [SomeLayer] where
+instance ([SomeLayer] ~ r) => ApplyAB HLayersToList (Vec n NElem, r) [SomeLayer] where
     applyAB _ (vec, acc) = SomeLayer vec : acc
 
-nnet hl = hFoldr HLayersToList ([] :: [SomeLayer]) hl
 
-
-----------------------------------------------------------------------------
- ---- Examples ---- Examples ---- Examples ---- Examples ---- Examples ----
-----------------------------------------------------------------------------
-
-test = inputsLayer (undefined :: SomeNat Nat2)
-    ==> nextLayer (  NeuronInputs (\(HCons il _) -> vecElem1 il +: vecElem2 il +: VNil)
-                  +: NeuronInputs (\(HCons il _) -> vecElem1 il +: vecElem2 il +: VNil)
-                  +: VNil
-                  )
-    ==> nextLayer (  NeuronInputs (\(HCons l1 _)            -> vecElem1 l1 +: vecElem2 l1 +: VNil)
-                  +: NeuronInputs (\(HCons l1 (HCons il _)) -> vecElem1 il +: vecElem2 l1 +: VNil)
-                  +: NeuronInputs (\(HCons l1 (HCons il _)) -> vecElem1 l1 +: vecElem2 il +: VNil)
-                  +: VNil
-                  )
-    ==> lastLayer (  NeuronInputs (\(HCons l2 _) -> vecElem1 l2
-                                                 +: vecElem2 l2
-                                                 +: vecElem3 l2
-                                                 +: VNil
-                                  ) +: VNil
-                  )
-
+nnet hlb = NNDescriptor . hFoldr HLayersToList ([] :: [SomeLayer]) $ fst hlb
 
 -----------------------------------------------------------------------------
 

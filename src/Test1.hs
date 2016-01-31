@@ -2,11 +2,13 @@
  ---- Examples ---- Examples ---- Examples ---- Examples ---- Examples ----
 ----------------------------------------------------------------------------
 
-module Test1 ( test ) where
+module Main ( main, test ) where
 
 import Neuro.DSL
+import Neuro.Show.Tikz
+import qualified Data.ByteString.Char8 as BS
 
-test = inputsLayer (undefined :: SomeNat Nat2)
+test = inputsLayer (undefined :: Nat' N2)
     ==> nextLayer (  NeuronInputs (\(HCons il _) -> vecElem1 il +: vecElem2 il +: VNil)
                   +: NeuronInputs (\(HCons il _) -> vecElem1 il +: vecElem2 il +: VNil)
                   +: VNil
@@ -22,3 +24,11 @@ test = inputsLayer (undefined :: SomeNat Nat2)
                                                  +: VNil
                                   ) +: VNil
                   )
+
+tNet = nnet test
+
+main = do let Tikz s = nShow tNet
+          BS.putStrLn s
+
+
+
