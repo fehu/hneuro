@@ -24,16 +24,14 @@ library
                        -- TODO: move it
                        Tikz.DSL
 
-  other-modules:       Neuro.Util
-                       Neuro.DSL.Internal
-
+  other-modules:       Neuro.DSL.Internal
                        -- temp
 
   -- other-extensions:
   build-depends:       base >=4.8 && <4.9
                      , HList >= 0.4
                      , bytestring >= 0.10
---                     , utf8-string >= 1
+                     , Nat >= 0.1
 
   hs-source-dirs:      src
   default-language:    Haskell2010
@@ -48,6 +46,7 @@ executable test1
   build-depends:       base >=4.8 && <4.9
                      , HList >= 0.4
                      , bytestring >= 0.10
+                     , Nat >= 0.1
 
   default-language:    Haskell2010
   default-extensions:  MultiParamTypeClasses

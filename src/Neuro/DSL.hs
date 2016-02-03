@@ -28,12 +28,12 @@ module Neuro.DSL (
 
 , NeuronInputs(..)
 --, SomeLayer(..)
-, module Neuro.Util
+, module Nat.Vec
 , module Data.HList
 
 ) where
 
-import Neuro.Util
+import Nat.Vec
 import Neuro.DSL.Internal
 
 import Data.HList

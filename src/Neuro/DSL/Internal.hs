@@ -26,7 +26,7 @@ module Neuro.DSL.Internal (
 
 ) where
 
-import Neuro.Util
+import Nat.Vec
 
 import Data.HList
 
